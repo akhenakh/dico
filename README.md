@@ -79,8 +79,8 @@ When working with real data, you will not fetch **every** fields from your DB, b
         firstname = StringField(required=True, max_length=40)
         email = EmailField()
     
-		_owner_fields = ['firstname', 'email']
-		_public_fields = ['firstname']
+		owner_fields = ['firstname', 'email']
+		public_fields = ['firstname']
 		
 	>>> user = User(**dict_from_db)
 	>>> user.dict_for_owner()
@@ -103,12 +103,12 @@ In mongo the id is called _id so we need a way to make the Document accept it is
 ### Hooks
 There are 6 hooks to manipulate data before and after exports
 
-* \_pre\_save_hook
-* \_post\_save_hook
-* \_pre\_owner_hook
-* \_post\_owner_hook
-* \_pre\_public_hook
-* \_post\_public_hook
+* pre\_save_hook
+* post\_save_hook
+* pre\_owner_hook
+* post\_owner_hook
+* pre\_public_hook
+* post\_public_hook
 
 Here we are renaming firstname field to first_name
 
@@ -119,8 +119,8 @@ Here we are renaming firstname field to first_name
 			del dict['id']
 			return dict	
 		
-		_public_fields = ['firstname']
-		_pre_save_hook = save_hook
+		public_fields = ['firstname']
+		pre_save_hook = save_hook
 		
 	>>> user = User(firstname='Bob')
 	>>> user.dict_for_save()
@@ -139,7 +139,7 @@ Properties are suitable for serialization
 		def full_name(self):
 			return firstname + ' ' + name
 			
-		_public_fields = ['full_name']
+		public_fields = ['full_name']
 		
 		>>> user.dict_for_public()
 		{'full_name': 'Sponge Bob'}
