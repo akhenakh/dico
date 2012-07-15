@@ -1,4 +1,4 @@
-#pydictobj
+# Pydictobj
 
 ## Features I want
 
@@ -25,7 +25,7 @@
 
 Most of the time you're manipulating data from a database server, modify it and save, especially in web development.
 
-Here are the usual patterns:
+Here are the usual patterns with Pydictobj:
 
 ### Create an object from scratch and validate fields
 
@@ -52,6 +52,7 @@ Here are the usual patterns:
     {'id': 45, 'title': 'New post', 'body': "I'm a new post"}
 
 ### Create an object populate from existing data and modify it
+
     >>> dict_from_db = {'id': '50000685467ffd11d1000001', 'title': 'A post', 'body': "I'm a post"}
     >>> post = BlogPost(**dict_from_db)
     >>> post.title
@@ -60,6 +61,7 @@ Here are the usual patterns:
 	>>> post.title = 'New title from cli'
     >>> post.validate()
     True
+    
 ### See modified fields since creation
 
     >>> post.changed_fields()
@@ -69,8 +71,10 @@ Here are the usual patterns:
     >>> post.dict_for_changes()
     {'title': 'New title from cli'}
 
+Note that dict_for_changes does not contains fields modifier by default=.
+
 ### Create an object with partial data
-When working with real data, you will not fetch **every** fields from your DB, but still wants validation
+When working with real data, you will not fetch **every** fields from your DB, but still wants validation.
 
 	>>> dict_from_db = {'body': "I'm a post"}
     >>> post = BlogPost(**dict_from_db)
@@ -89,6 +93,7 @@ When working with real data, you will not fetch **every** fields from your DB, b
 	True
 
 ### Prepare object for export and adjust visibility of fields
+
     class User(Document):
         id = IntegerField(required=True)
         firstname = StringField(required=True, max_length=40)
@@ -148,7 +153,7 @@ Here we are renaming firstname field to first_name
 We know we want to update only some fields firstname and email, so we fetch the object with no field, then we create a new user and save it
 
     class User(Document):
-		id = ObjectIdField(required=True, alias='_id')
+		id = ObjectIdField(default=ObjectId(), required=True, alias='_id')
 		firstname = StringField(required=True, max_length=40)
         email = EmailField()
 
@@ -163,7 +168,6 @@ We know we want to update only some fields firstname and email, so we fetch the 
 	>>> db.user.update({'_id': user.id}, user.changed_fields())
 	
 	>>> user = User()
-	>>> user.id = ObjectId()
 	>>> user.email = 'sponge@bob.com'
 	>>> db.user.save(user.dict_for_save())
 	
