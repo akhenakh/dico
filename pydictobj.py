@@ -33,9 +33,10 @@ class ValidationException(Exception):
         return '%s - %s:%s' % (self.reason, self.field_name, self.field_value)
 
 class BaseField(object):
-    def __init__(self, default=None, required=False):
+    def __init__(self, default=None, required=False, field_name=None):
         self.default = default
-        self.required = required
+        self.is_required = required
+        self.field_name = field_name
 
     def __set__(self, instance, value):
         instance._data[self.field_name] = value
@@ -68,9 +69,6 @@ class StringField(BaseField):
         if not isinstance(value, (str, unicode)):
             return False
 
-        if not is_required and value is None:
-            return True
-
         if self.max_length is not None and len(value) > self.max_length:
             return False
             raise ValidationException('String value is too long',
@@ -90,8 +88,6 @@ class StringField(BaseField):
 
 class IntegerField(BaseField):
     def _validate(self, value, is_required=False):
-        if not is_required and value is None:
-            return True
         if not isinstance(value, (int, long)):
             return False
         return True
@@ -136,6 +132,10 @@ class Document(object):
         for field_name in self._fields.keys():
             field = self._fields[field_name]
             value = self._data.get(field_name)
+            if field.is_required and value is None:
+                if not required:
+                    continue
+                return False
             if not field._validate(value, is_required=required):
                 return False
         return True
