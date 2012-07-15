@@ -5,10 +5,24 @@ class TestAPIShareCan(unittest.TestCase):
     def setUp(self):
         pass
 
+    def test_partial(self):
+        class User(pydictobj.Document):
+            id = pydictobj.IntegerField(required=True)
+            count = pydictobj.IntegerField()
+
+        user = User()
+        user.count = 2
+
+        self.assertFalse(user.validate())
+
+        self.assertTrue(user.validate_partial())
+
+        user.count = 'a'
+        self.assertFalse(user.validate_partial())
+
     def test_integer_field(self):
         class User(pydictobj.Document):
             id = pydictobj.IntegerField(required=True)
-            count = pydictobj.IntegerField(default=1)
 
         user = User()
         self.assertFalse(user.validate())
@@ -19,6 +33,11 @@ class TestAPIShareCan(unittest.TestCase):
         user.id = 'toto'
         self.assertFalse(user.validate())
 
+    def test_default_value(self):
+        class User(pydictobj.Document):
+            count = pydictobj.IntegerField(default=1)
+
+        user = User()
         self.assertEqual(user.count, 1)
 
     def test_string_field(self):

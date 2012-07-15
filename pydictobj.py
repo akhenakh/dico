@@ -33,10 +33,9 @@ class ValidationException(Exception):
         return '%s - %s:%s' % (self.reason, self.field_name, self.field_value)
 
 class BaseField(object):
-    def __init__(self, default=None, required=False, field_name=None):
+    def __init__(self, default=None, required=False):
         self.default = default
         self.required = required
-        self.field_name = field_name
 
     def __set__(self, instance, value):
         instance._data[self.field_name] = value
