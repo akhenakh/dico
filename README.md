@@ -1,27 +1,7 @@
 # Pydictobj
 
-## Features I want
-
-* can transform id to \_id before serialize (use a transform pattern applicable everywhere ?)
-* required is checked for full object validate, but individual fields can be tested see partial
-* Transform field rename field before exporting, example: remove microseconds before public serialization on a datefield (as JSON cls hooks)
-* To dict for owner (eg user object, the owner can see the fields email)
-* To dict for public (eg user object, public can't see the fields email)
-* To dict for mongo db or sql saving
-* pre save and post save hook
-* Track changed field to use update only changed fields with mongo
-* Can serialize properties
-* partial = not all fields, can create an object with only some fields you want to export (to avoid select * ) 
-* Post save commit() reset changed fields
-* Regexp compiled only one time
-
-## Ideas
-* Convert all fields to json acceptable type, (for use with ujson directly), a param in dict\_for\_public(json_convert=True) ?
-* Use it as form validation? (I'm not sure I need this: my REST views are not exactly mapped to my objects)
-* Can external user modify this field? Eg id
-* use \_\_slots\_\_ as we know the fields ?
-* Returns a representation of this pydictobj class as a JSON schema. (nizox)
-
+After using [DictShield](https://github.com/j2labs/dictshield), a "database-agnostic modeling system", I've found the idea very usefull when dealing with NoSQL database, but want to choose another direction.
+Pydictobj is an attempt to solve my needs, heavily inspired by DictShield.
 
 Most of the time you're manipulating data from a database server, modify it and save, especially in web development.
 
@@ -148,29 +128,6 @@ Here we are renaming firstname field to first_name
 	>>> user.dict_for_public()
 	{'firstname':'Bob'}
 	
-		
-### Example usage with mongo
-We know we want to update only some fields firstname and email, so we fetch the object with no field, then we create a new user and save it
-
-    class User(Document):
-		id = ObjectIdField(default=ObjectId(), required=True, alias='_id')
-		firstname = StringField(required=True, max_length=40)
-        email = EmailField()
-
-	    _public_fields = ['firstname']
-		
-	>>> user_dict = db.user.find({'email':'bob@sponge.com'}, [])
-	>>> user = User()
-	>>> user.firstname = 'Bob'
-	>>> user.email = 'bob@yahoo.com'
-	>>> user.validate_partial()
-	True
-	>>> db.user.update({'_id': user.id}, user.changed_fields())
-	
-	>>> user = User()
-	>>> user.email = 'sponge@bob.com'
-	>>> db.user.save(user.dict_for_save())
-	
 ### @properties visibility
 Properties are suitable for serialization
 
@@ -187,10 +144,55 @@ Properties are suitable for serialization
 		>>> user.dict_for_public()
 		{'full_name': 'Sponge Bob'}
     
-### Special case for Id field? TODO
-Id field can be handled differently, for example in Mysql with auto increment the id is given by the server, in Mongo you generate it client side
+    
+### Example usage with mongo
+We know we want to update only some fields firstname and email, so we fetch the object with no field, update our fields then update, later we create a new user and save it.
 
     class User(Document):
-        id = ObjectIdField(required=True) 
-        firstname = StringField(required=True, max_length=40)
+		id = ObjectIdField(default=ObjectId(), required=True, alias='_id')
+		firstname = StringField(required=True, max_length=40)
+        email = EmailField()
+
+	    public_fields = ['firstname', 'id']
+		
+	>>> user_dict = db.user.find_one({'email':'bob@sponge.com'}, [])
+	>>> user = User(**user_dict)
+	>>> user.firstname = 'Bob'
+	>>> user.email = 'bob@yahoo.com'
+	>>> user.validate_partial()
+	True
+	>>> db.user.update({'_id': user.id}, user.changed_fields())
+	
+	>>> user = User()
+	>>> user.email = 'sponge@bob.com'
+	>>> db.user.save(user.dict_for_save())
+	
+	# note this trick here we are reusing the public fields list from the user object to query only
+	# this specific fields and make queries faster
+	>>> user = db.user.find_one({'email':'bob@yahoo.com', User.public_fields)
+	>>> user.dict_for_public()
+	{'id':'50000685467ffd11d1000001', 'firstname':'Bob'}
+        
+## Features wanted
+
+* can transform id to \_id before serialize (use a transform pattern applicable everywhere ?)
+* required is checked for full object validate, but individual fields can be tested see partial
+* Transform field rename field before exporting, example: remove microseconds before public serialization on a datefield (as JSON cls hooks)
+* To dict for owner (eg user object, the owner can see the fields email)
+* To dict for public (eg user object, public can't see the fields email)
+* To dict for mongo db or sql saving
+* pre save and post save hook
+* Track changed field to use update only changed fields with mongo
+* Can serialize properties
+* partial = not all fields, can create an object with only some fields you want to export (to avoid select * ) 
+* Post save commit() reset changed fields
+* Regexp compiled only one time
+
+## Ideas
+* Convert all fields to json acceptable type, (for use with ujson directly), a param in dict\_for\_public(json_convert=True) ?
+* Use it as form validation? (I'm not sure I need this: my REST views are not exactly mapped to my objects)
+* Can external user modify this field? Eg id
+* use \_\_slots\_\_ as we know the fields ?
+* Returns a representation of this pydictobj class as a JSON schema. (nizox)
+
    
