@@ -23,24 +23,22 @@ EMAIL_REGEX = re.compile(
 class ValidationException(Exception):
     """The field did not pass validation.
     """
-    def __init__(self, reason, field_name, field_value, *args, **kwargs):
-        super(ShieldException, self).__init__(*args, **kwargs)
-        self.reason = reason
-        self.field_name = field_name
-        self.field_value = field_value
+    pass
 
-    def __str__(self):
-        return '%s - %s:%s' % (self.reason, self.field_name, self.field_value)
 
 class BaseField(object):
-    def __init__(self, default=None, required=False, field_name=None):
+    def __init__(self, default=None, required=False, field_name=None, choices=None):
+        """ the BaseField class for all Document's field
+        """
         self.default = default
         self.is_required = required
         self.field_name = field_name
+        self.choices = choices
 
     def __set__(self, instance, value):
         instance._data[self.field_name] = value
         instance._modified_fields.add(self.field_name)
+        instance._is_valid = False
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -66,29 +64,23 @@ class StringField(BaseField):
         self.min_length = min_length
         super(StringField, self).__init__(**kwargs)
 
-    def _validate(self, value, is_required=False):
+    def _validate(self, value):
         if not isinstance(value, (str, unicode)):
             return False
 
         if self.max_length is not None and len(value) > self.max_length:
             return False
-            raise ValidationException('String value is too long',
-                                  self.field_name, value)
 
         if self.min_length is not None and len(value) < self.min_length:
             return False
-            raise ValidationException('String value is too short',
-                                  self.uniq_field, value)
 
         if self.compiled_regex is not None and self.compiled_regex.match(value) is None:
             return False
-            message = 'String value did not match validation regex',
-            raise ValidationException(message, self.uniq_field, value)
 
         return True
 
 class IntegerField(BaseField):
-    def _validate(self, value, is_required=False):
+    def _validate(self, value):
         if not isinstance(value, (int, long)):
             return False
         return True
@@ -107,13 +99,14 @@ class DocumentMetaClass(type):
         klass.__slots__ = fields.keys()
         return klass
 
-
 class Document(object):
     __metaclass__ = DocumentMetaClass
 
     def __init__(self, **values):
         self._data = {}
         self._modified_fields = set()
+        # optimization to avoid double validate() if nothing has changed
+        self._is_valid = False
 
         for key in values.keys():
             if key in self._fields:
@@ -122,44 +115,90 @@ class Document(object):
     public_fields = None
     owner_fields = None
 
-    pre_save_hook = None
-    post_save_hook = None
-    pre_public_hook = None
-    post_public_hook = None
-    pre_owner_hook = None
-    post_owner_hook = None
+    pre_save_filter = None
+    post_save_filter = None
+    pre_public_filter = None
+    post_public_filter = None
+    pre_owner_filter = None
+    post_owner_filter = None
 
-    def validate(self, required=True):
-        for field_name in self._fields.keys():
+    def _validate_fields(self, fields_list, required=True):
+        """ take a list of fields name and validate them
+            return True if all fields in fields_list required are valid and set
+            return True if fields in fields_list are valid and set if required=False
+        """
+        for field_name in fields_list:
             field = self._fields[field_name]
             value = self._data.get(field_name)
             if field.is_required and value is None:
                 if not required:
                     continue
-                return False
-            if not field._validate(value, is_required=required):
+                if field.default is not None:
+                    self._data[field_name] = getattr(self, field_name)
+                    value = self._data[field_name]
+                if value is None:
+                    return False
+            if not field.is_required and value is None:
+                continue
+            if field.choices is not None:
+                if value not in field.choices:
+                    return False
+            if not field._validate(value):
                 return False
         return True
 
+    def validate(self, required=True):
+        """ return True if all required are valid and set
+            return True if fields are valid and set if required=False see validate_partial
+        """
+        if required and self._is_valid:
+            return True
+        is_valid = self._validate_fields(self._fields.keys(), required=required)
+        if required and is_valid:
+            self._is_valid = True
+        return is_valid
+
+    def validate_partial(self):
+        """ validate only the format of each field regardless of required option
+            usefull to validate some parts of a document
+        """
+        return self.validate(required=False)
+
     def dict_for_save(self, json_compliant=False):
+        """ return a dict with field_name:value
+            raise ValidationError if not valid
+        """
+        if self._is_valid:
+            return self._data
+        if not self.validate():
+            raise ValidationException()
         return self._data
 
     def dict_for_public(self, json_compliant=False):
+        """ return a dict with keys specified in public_fields or return empty dict
+        """
         if self.public_fields is None:
             return {}
+        if not self._is_valid:
+            if not self._validate_fields(self.public_fields, required=True):
+                raise ValidationException()
         public_dict = { good_key: self._data[good_key] for good_key in self.public_fields }
         return public_dict
 
     def dict_for_owner(self, json_compliant=False):
+        """ return a dict with keys specified in owner_fields or return empty dict
+        """
         if self.owner_fields is None:
             return {}
+        if not self._is_valid:
+            if not self._validate_fields(self.owner_fields, required=True):
+                raise ValidationException()
         owner_dict = { good_key: self._data[good_key] for good_key in self.owner_fields }
         return owner_dict
 
-    def validate_partial(self):
-        return self.validate(required=False)
-
     def modified_fields(self):
+        """ return a set of fields modified via setters
+        """
         return self._modified_fields
 
 

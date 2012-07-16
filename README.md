@@ -100,27 +100,27 @@ In mongo the id is called _id so we need a way to make the Document accept it is
 	>>> user.id
 	'50000685467ffd11d1000001'
 	
-### Hooks
-There are 6 hooks to manipulate data before and after exports
+### Hooks filters
+There are 6 hooks filter to manipulate data before and after exports
 
-* pre\_save_hook
-* post\_save_hook
-* pre\_owner_hook
-* post\_owner_hook
-* pre\_public_hook
-* post\_public_hook
+* pre\_save_filter
+* post\_save_filter
+* pre\_owner_filter
+* post\_owner_filter
+* pre\_public_filter
+* post\_public_filter
 
 Here we are renaming firstname field to first_name
 
     class User(Document):
         firstname = StringField(required=True, max_length=40)
-		def save_hook(dict):
+		def save_filter(dict):
 			dict['_first_name] = dict['firstname']
 			del dict['id']
 			return dict	
 		
 		public_fields = ['firstname']
-		pre_save_hook = save_hook
+		pre_save_filter = save_filter
 		
 	>>> user = User(firstname='Bob')
 	>>> user.dict_for_save()
@@ -196,5 +196,13 @@ We know we want to update only some fields firstname and email, so we fetch the 
 * Returns a representation of this pydictobj class as a JSON schema. (nizox)
 
 ## TODO
+* a field required=False can not have a default= cause it will be called only on the getter but not on dict_for_save()
 * Implements json_compliant
-* modified_fields
+* errors
+* implements choices
+* ip fields with ipv6 support ('/^(?>(?>([a-f0-9]{1,4})(?>:(?1)){7}|(?!(?:.*[a-f0-9](?>:|$)){7,})((?1)(?>:(?1)){0,5})?::(?2)?)|(?>(?>(?1)(?>:(?1)){5}:|(?!(?:.*[a-f0-9]:){5,})(?3)?::(?>((?1)(?>:(?1)){0,3}):)?)?(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(?>\.(?4)){3}))$/iD')
+* hooks
+* @properties
+
+## Differences with dictshield
+* dictshield raise ValueError at object creation if the data does not match the field, makes validate useless
