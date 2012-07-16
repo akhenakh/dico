@@ -20,6 +20,7 @@ EMAIL_REGEX = re.compile(
     re.IGNORECASE
 )
 
+
 class ValidationException(Exception):
     """The field did not pass validation.
     """
@@ -54,10 +55,10 @@ class BaseField(object):
 
         return value
 
+
 class StringField(BaseField):
     """A unicode string field.
     """
-
     def __init__(self, compiled_regex=None, max_length=None, min_length=None, **kwargs):
         self.compiled_regex = compiled_regex
         self.max_length = max_length
@@ -79,11 +80,13 @@ class StringField(BaseField):
 
         return True
 
+
 class IntegerField(BaseField):
     def _validate(self, value):
         if not isinstance(value, (int, long)):
             return False
         return True
+
 
 class DocumentMetaClass(type):
     def __new__(cls, name, bases, attrs):
@@ -98,6 +101,7 @@ class DocumentMetaClass(type):
         klass._fields = fields
         klass.__slots__ = fields.keys()
         return klass
+
 
 class Document(object):
     __metaclass__ = DocumentMetaClass
@@ -149,7 +153,8 @@ class Document(object):
 
     def validate(self, required=True):
         """ return True if all required are valid and set
-            return True if fields are valid and set if required=False see validate_partial
+            return True if fields are valid and set if required=False
+            see validate_partial
         """
         if required and self._is_valid:
             return True
@@ -182,7 +187,7 @@ class Document(object):
         if not self._is_valid:
             if not self._validate_fields(self.public_fields, required=True):
                 raise ValidationException()
-        public_dict = { good_key: self._data[good_key] for good_key in self.public_fields }
+        public_dict = {good_key: self._data[good_key] for good_key in self.public_fields}
         return public_dict
 
     def dict_for_owner(self, json_compliant=False):
@@ -193,14 +198,10 @@ class Document(object):
         if not self._is_valid:
             if not self._validate_fields(self.owner_fields, required=True):
                 raise ValidationException()
-        owner_dict = { good_key: self._data[good_key] for good_key in self.owner_fields }
+        owner_dict = {good_key: self._data[good_key] for good_key in self.owner_fields}
         return owner_dict
 
     def modified_fields(self):
         """ return a set of fields modified via setters
         """
         return self._modified_fields
-
-
-
-
