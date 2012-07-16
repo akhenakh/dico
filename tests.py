@@ -191,11 +191,22 @@ class TestAPIShareCan(unittest.TestCase):
 
         user = User()
         save_dict = user.dict_for_save()
-        self.assertNotIn('id', save_dict)
+        # it should be there
+        # but not on validate_partial
+        self.assertIn('id', save_dict)
         self.assertIsNotNone(user.id)
-        save_dict = user.dict_for_save()
-        self.assertNotIn('id', save_dict)
 
+        user = User()
+        self.assertTrue(user.validate_partial())
+
+    def test_not_required(self):
+        class User(pydictobj.Document):
+            id = pydictobj.IntegerField()
+            count = pydictobj.IntegerField(required=True)
+
+        user = User()
+        user.count = 2
+        self.assertTrue(user.validate())
 
 if __name__ == "__main__":
     unittest.main()

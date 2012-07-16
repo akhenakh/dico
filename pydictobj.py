@@ -126,48 +126,52 @@ class Document(object):
     pre_owner_filter = None
     post_owner_filter = None
 
-    def _validate_fields(self, fields_list, required=True):
+    def _validate_fields(self, fields_list, stop_on_required=True):
         """ take a list of fields name and validate them
             return True if all fields in fields_list required are valid and set
-            return True if fields in fields_list are valid and set if required=False
+            return True if fields in fields_list are valid and set if stop_on_required=False
         """
         for field_name in fields_list:
             field = self._fields[field_name]
             value = self._data.get(field_name)
-            if field.is_required and value is None:
-                if not required:
-                    continue
-                if field.default is not None:
-                    self._data[field_name] = getattr(self, field_name)
-                    value = self._data[field_name]
-                if value is None:
+
+            # if we have a default to call
+            if value is None and field.default is not None:
+                self._data[field_name] = getattr(self, field_name)
+                value = self._data[field_name]
+
+            if value is None:
+                if stop_on_required and field.is_required:
                     return False
-            if not field.is_required and value is None:
                 continue
+
+            # validate possible choices first
             if field.choices is not None:
                 if value not in field.choices:
                     return False
+
             if not field._validate(value):
                 return False
+
         return True
 
-    def validate(self, required=True):
+    def validate(self, stop_on_required=True):
         """ return True if all required are valid and set
             return True if fields are valid and set if required=False
             see validate_partial
         """
-        if required and self._is_valid:
+        if stop_on_required and self._is_valid:
             return True
-        is_valid = self._validate_fields(self._fields.keys(), required=required)
-        if required and is_valid:
+        is_valid = self._validate_fields(self._fields.keys(), stop_on_required=stop_on_required)
+        if stop_on_required and is_valid:
             self._is_valid = True
         return is_valid
 
     def validate_partial(self):
-        """ validate only the format of each field regardless of required option
+        """ validate only the format of each field regardless of stop_on_required option
             usefull to validate some parts of a document
         """
-        return self.validate(required=False)
+        return self.validate(stop_on_required=False)
 
     def dict_for_save(self, json_compliant=False):
         """ return a dict with field_name:value
@@ -185,7 +189,7 @@ class Document(object):
         if self.public_fields is None:
             return {}
         if not self._is_valid:
-            if not self._validate_fields(self.public_fields, required=True):
+            if not self._validate_fields(self.public_fields, stop_on_required=True):
                 raise ValidationException()
         public_dict = {good_key: self._data[good_key] for good_key in self.public_fields}
         return public_dict
@@ -196,7 +200,7 @@ class Document(object):
         if self.owner_fields is None:
             return {}
         if not self._is_valid:
-            if not self._validate_fields(self.owner_fields, required=True):
+            if not self._validate_fields(self.owner_fields, stop_on_required=True):
                 raise ValidationException()
         owner_dict = {good_key: self._data[good_key] for good_key in self.owner_fields}
         return owner_dict
