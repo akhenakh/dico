@@ -66,6 +66,40 @@ class TestAPIShareCan(unittest.TestCase):
 
         self.assertIsNone(getattr(user, 'bad_name', None))
 
+    def test_dict_for_save(self):
+        class User(pydictobj.Document):
+            name = pydictobj.StringField()
+            count = pydictobj.IntegerField()
+
+        user = User()
+        user.name = 'Bob'
+        user.count = 5
+        result_dict = user.dict_for_save()
+
+        self.assertIn('name', result_dict)
+        self.assertIn('count', result_dict)
+        self.assertEqual(result_dict['name'], 'Bob')
+        self.assertEqual(result_dict['count'], 5)
+
+    def test_dict_visibility(self):
+        class User(pydictobj.Document):
+            name = pydictobj.StringField()
+
+        user = User()
+        user.name = 'Bob'
+
+        public_dict = user.dict_for_public()
+
+        self.assertDictEqual({}, public_dict)
+
+        class User(pydictobj.Document):
+            name = pydictobj.StringField()
+            public_fields = ['name']
+
+        user = User()
+        user.name = 'Bob'
+        public_dict = user.dict_for_public()
+        self.assertIn('name', public_dict)
 
     if __name__ == "__main__":
         unittest.main()

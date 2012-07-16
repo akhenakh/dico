@@ -44,7 +44,7 @@ Here are the usual patterns with Pydictobj:
     
 ### See modified fields since creation
 
-    >>> post.changed_fields()
+    >>> post.modified_fields()
     ['title']
 
 	# Usefull for Mongo update
@@ -185,7 +185,7 @@ We know we want to update only some fields firstname and email, so we fetch the 
 * Track changed field to use update only changed fields with mongo
 * Can serialize properties
 * partial = not all fields, can create an object with only some fields you want to export (to avoid select * ) 
-* Post save commit() reset changed fields
+* Post save commit() reset modified fields
 * Regexp compiled only one time
 
 ## Ideas
@@ -195,4 +195,6 @@ We know we want to update only some fields firstname and email, so we fetch the 
 * use \_\_slots\_\_ as we know the fields ?
 * Returns a representation of this pydictobj class as a JSON schema. (nizox)
 
-   
+## TODO
+* Implements json_compliant
+* modified_fields

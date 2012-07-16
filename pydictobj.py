@@ -40,6 +40,7 @@ class BaseField(object):
 
     def __set__(self, instance, value):
         instance._data[self.field_name] = value
+        instance._modified_fields.add(self.field_name)
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -112,7 +113,7 @@ class Document(object):
 
     def __init__(self, **values):
         self._data = {}
-        self._changed_fields = []
+        self._modified_fields = set()
 
         for key in values.keys():
             if key in self._fields:
@@ -140,8 +141,27 @@ class Document(object):
                 return False
         return True
 
+    def dict_for_save(self, json_compliant=False):
+        return self._data
+
+    def dict_for_public(self, json_compliant=False):
+        if self.public_fields is None:
+            return {}
+        public_dict = { good_key: self._data[good_key] for good_key in self.public_fields }
+        return public_dict
+
+    def dict_for_owner(self, json_compliant=False):
+        if self.owner_fields is None:
+            return {}
+        owner_dict = { good_key: self._data[good_key] for good_key in self.owner_fields }
+        return owner_dict
+
     def validate_partial(self):
         return self.validate(required=False)
+
+    def modified_fields(self):
+        return self._modified_fields
+
 
 
 
