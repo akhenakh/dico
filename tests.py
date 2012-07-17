@@ -34,6 +34,16 @@ class TestAPIShareCan(unittest.TestCase):
         user.id = 'toto'
         self.assertFalse(user.validate())
 
+    def test_boolean_field(self):
+        class User(pydictobj.Document):
+            active = pydictobj.BooleanField()
+
+        user = User()
+        user.active = True
+        self.assertTrue(user.validate())
+        user.active = 1
+        self.assertFalse(user.validate())
+
     def test_default_value(self):
         class User(pydictobj.Document):
             count = pydictobj.IntegerField(default=1)
@@ -207,6 +217,23 @@ class TestAPIShareCan(unittest.TestCase):
         user = User()
         user.count = 2
         self.assertTrue(user.validate())
+
+    def test_properties(self):
+        class User(pydictobj.Document):
+            id = pydictobj.IntegerField()
+
+            @property
+            def age(self):
+                return 42
+
+            public_fields = ['age']
+
+        user = User()
+        self.assertEqual(user.age, 42)
+
+        public_dict = user.dict_for_public()
+        self.assertIn('age', public_dict)
+        self.assertEqual(public_dict['age'], 42)
 
 if __name__ == "__main__":
     unittest.main()

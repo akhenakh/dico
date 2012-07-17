@@ -56,6 +56,12 @@ class BaseField(object):
         return value
 
 
+class BooleanField(BaseField):
+    def _validate(self, value):
+        if not isinstance(value, (bool)):
+            return False
+        return True
+
 class StringField(BaseField):
     """A unicode string field.
     """
@@ -132,6 +138,14 @@ class Document(object):
             return True if fields in fields_list are valid and set if stop_on_required=False
         """
         for field_name in fields_list:
+            # if field name is not in the field list but a property
+            if field_name not in self._fields.keys():
+
+                if hasattr(self, field_name):
+                    continue
+                else:
+                    raise KeyError
+
             field = self._fields[field_name]
             value = self._data.get(field_name)
 
@@ -183,27 +197,36 @@ class Document(object):
             raise ValidationException()
         return self._data
 
-    def dict_for_public(self, json_compliant=False):
-        """ return a dict with keys specified in public_fields or return empty dict
+    def dict_for_fields(self, fields_list=None, json_compliant=False):
+        """ return a dict with keys specified in fields with in _data or self.property
+            or return empty dict
         """
-        if self.public_fields is None:
+        if fields_list is None:
             return {}
         if not self._is_valid:
-            if not self._validate_fields(self.public_fields, stop_on_required=True):
+            if not self._validate_fields(fields_list, stop_on_required=True):
                 raise ValidationException()
-        public_dict = {good_key: self._data[good_key] for good_key in self.public_fields}
-        return public_dict
+
+        # find all the keys in fields_list that are fields and form a dict with the value in _data
+        public_dict = {good_key: self._data[good_key] for good_key in fields_list
+                       if good_key in self._fields.keys()}
+
+        # find all the keys in public_fields that are NOT fields and form a dict with getattr on the obj
+        property_dict =  {key_not_real_field:getattr(self, key_not_real_field)
+                          for key_not_real_field in fields_list
+                          if key_not_real_field not in self._fields.keys()}
+        return dict(public_dict.items() + property_dict.items())
+
+    def dict_for_public(self, json_compliant=False):
+        """ return a dict with keys specified in public_fields with value from _data or self.property
+            or return empty dict
+        """
+        return self.dict_for_fields(self.public_fields)
 
     def dict_for_owner(self, json_compliant=False):
         """ return a dict with keys specified in owner_fields or return empty dict
         """
-        if self.owner_fields is None:
-            return {}
-        if not self._is_valid:
-            if not self._validate_fields(self.owner_fields, stop_on_required=True):
-                raise ValidationException()
-        owner_dict = {good_key: self._data[good_key] for good_key in self.owner_fields}
-        return owner_dict
+        return self.dict_for_fields(self.owner_fields)
 
     def modified_fields(self):
         """ return a set of fields modified via setters

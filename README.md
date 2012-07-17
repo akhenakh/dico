@@ -198,10 +198,8 @@ We know we want to update only some fields firstname and email, so we fetch the 
 ## TODO
 * Implements json_compliant
 * errors
-* implements choices
 * ip fields with ipv6 support ('/^(?>(?>([a-f0-9]{1,4})(?>:(?1)){7}|(?!(?:.*[a-f0-9](?>:|$)){7,})((?1)(?>:(?1)){0,5})?::(?2)?)|(?>(?>(?1)(?>:(?1)){5}:|(?!(?:.*[a-f0-9]:){5,})(?3)?::(?>((?1)(?>:(?1)){0,3}):)?)?(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(?>\.(?4)){3}))$/iD')
 * hooks
-* @properties
 * the continue in _validate_fields does not show up in coverage
 * documentation for ValidationException on save()
 
