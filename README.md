@@ -90,11 +90,11 @@ When working with real data, you will not fetch **every** fields from your DB, b
 	>> user.dict_for_save()
 	{'firstname': 'Paul', 'email':'paul_sponge@yahoo.com', 'id': 56}
 
-### Alias for field input
+### Aliases for field input
 In mongo the id is called _id so we need a way to make the Document accept it is as id.
 
     class User(Document):
-	    id = ObjectIdField(required=True, alias='_id')
+	    id = ObjectIdField(required=True, aliases=['_id'])
 		
 	>>> user = User(_id=ObjectId('50000685467ffd11d1000001'))
 	>>> user.id
@@ -149,7 +149,7 @@ Properties are suitable for serialization
 We know we want to update only some fields firstname and email, so we fetch the object with no field, update our fields then update, later we create a new user and save it.
 
     class User(Document):
-		id = ObjectIdField(default=ObjectId(), required=True, alias='_id')
+		id = ObjectIdField(default=ObjectId(), required=True, aliases=['_id'])
 		firstname = StringField(required=True, max_length=40)
         email = EmailField()
 
@@ -196,6 +196,7 @@ We know we want to update only some fields firstname and email, so we fetch the 
 * Returns a representation of this pydictobj class as a JSON schema. (nizox)
 
 ## TODO
+* listfields
 * Implements json_compliant
 * errors
 * ip fields with ipv6 support ('/^(?>(?>([a-f0-9]{1,4})(?>:(?1)){7}|(?!(?:.*[a-f0-9](?>:|$)){7,})((?1)(?>:(?1)){0,5})?::(?2)?)|(?>(?>(?1)(?>:(?1)){5}:|(?!(?:.*[a-f0-9]:){5,})(?3)?::(?>((?1)(?>:(?1)){0,3}):)?)?(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(?>\.(?4)){3}))$/iD')

@@ -29,13 +29,15 @@ class ValidationException(Exception):
 
 
 class BaseField(object):
-    def __init__(self, default=None, required=False, field_name=None, choices=None):
+    def __init__(self, default=None, required=False, choices=None, aliases=None):
         """ the BaseField class for all Document's field
         """
         self.default = default
         self.is_required = required
-        self.field_name = field_name
         self.choices = choices
+        self.aliases = aliases
+        # Set by the metaclass
+        #self.field_name
 
     def __set__(self, instance, value):
         instance._data[self.field_name] = value
@@ -114,16 +116,27 @@ class DateTimeField(BaseField):
         return True
 
 
+class ListField(BaseField):
+    pass
+
+
 class DocumentMetaClass(type):
     def __new__(cls, name, bases, attrs):
         fields = {}
 
         klass = type.__new__(cls, name, bases, attrs)
+        klass._aliases_dict = {}
         for attr_name, attr_value in attrs.items():
             has_class = hasattr(attr_value, "__class__")
             if has_class and issubclass(attr_value.__class__, BaseField):
                 fields[attr_name] = attr_value
                 attr_value.field_name = attr_name
+
+                # test for aliases
+                if fields[attr_name].aliases is not None:
+                    for alias in fields[attr_name].aliases:
+                        klass._aliases_dict[alias] = attr_name
+
         klass._fields = fields
         klass.__slots__ = fields.keys()
         return klass
@@ -137,10 +150,17 @@ class Document(object):
         self._modified_fields = set()
         # optimization to avoid double validate() if nothing has changed
         self._is_valid = False
+        # initialized by metaclass
+        #self._fields
+        #self._aliases_dict
 
         for key in values.keys():
             if key in self._fields:
                 self._data[key] = values[key]
+                continue
+            if key in self._aliases_dict:
+                real_key = self._aliases_dict[key]
+                self._data[real_key] = values[key]
 
     public_fields = None
     owner_fields = None

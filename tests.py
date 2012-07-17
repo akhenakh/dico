@@ -295,5 +295,15 @@ class TestAPIShareCan(unittest.TestCase):
         user.email = '123456789012345678901234567890@spong.com'
         self.assertFalse(user.validate())
 
+    def test_alias(self):
+        class User(pydictobj.Document):
+            id = pydictobj.IntegerField(aliases=['_id', 'aid'])
+
+        user = User(_id=2)
+        self.assertEqual(user.id, 2)
+
+        user = User(aid=4)
+        self.assertEqual(user.id, 4)
+
 if __name__ == "__main__":
     unittest.main()
