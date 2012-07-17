@@ -143,6 +143,8 @@ class TestAPIShareCan(unittest.TestCase):
             public_fields = ['name']
             owner_fields = ['name', 'id']
 
+        self.assertEqual(User.public_fields, ['name',])
+
         user = User()
         user.name = 'Bob'
         user.id = 3
@@ -244,6 +246,14 @@ class TestAPIShareCan(unittest.TestCase):
         public_dict = user.dict_for_public()
         self.assertIn('age', public_dict)
         self.assertEqual(public_dict['age'], 42)
+
+        class User(pydictobj.Document):
+            id = pydictobj.IntegerField()
+
+            public_fields = ['age']
+
+        user = User()
+        self.assertRaises(KeyError, user.dict_for_public)
 
     def test_datetime_field(self):
         class User(pydictobj.Document):
@@ -433,6 +443,13 @@ class TestAPIShareCan(unittest.TestCase):
         except AttributeError:
             error = True
         self.assertTrue(error)
+
+    def test_inside_code(self):
+        class User(pydictobj.Document):
+            id = pydictobj.IntegerField()
+
+        user = User()
+        self.assertEqual({}, user._dict_for_fields())
 
 if __name__ == "__main__":
     unittest.main()

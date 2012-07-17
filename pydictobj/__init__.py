@@ -281,7 +281,7 @@ class Document(object):
         has_filter = getattr(self, 'pre_save_filter', None)
         return self._data if has_filter is None else self.pre_save_filter(save_dict)
 
-    def dict_for_fields(self, fields_list=None, json_compliant=False):
+    def _dict_for_fields(self, fields_list=None, json_compliant=False):
         """ return a dict with keys specified in fields with in _data or self.property
             or return empty dict
         """
@@ -293,7 +293,7 @@ class Document(object):
 
         # find all the keys in fields_list that are fields
         # and form a dict with the value in _data
-        public_dict = {good_key: self._data[good_key] for good_key in fields_list
+        field_dict = {good_key: self._data[good_key] for good_key in fields_list
                        if good_key in self._fields.keys()}
 
         # find all the keys in public_fields that are NOT fields
@@ -302,7 +302,7 @@ class Document(object):
                           for key_not_real_field in fields_list
                           if key_not_real_field not in self._fields.keys()}
 
-        return dict(public_dict.items() + property_dict.items())
+        return dict(field_dict.items() + property_dict.items())
 
     def dict_for_public(self, json_compliant=False):
         """ return a dict with keys specified in public_fields
@@ -310,7 +310,7 @@ class Document(object):
             or return empty dict
         """
         public_fields = getattr(self, 'public_fields', [])
-        public_dict = self.dict_for_fields(public_fields)
+        public_dict = self._dict_for_fields(public_fields)
         has_filter = getattr(self, 'pre_public_filter', None)
         return public_dict if has_filter is None else self.pre_public_filter(public_dict)
 
@@ -318,7 +318,7 @@ class Document(object):
         """ return a dict with keys specified in owner_fields or return empty dict
         """
         owner_fields = getattr(self, 'owner_fields', [])
-        owner_dict = self.dict_for_fields(owner_fields)
+        owner_dict = self._dict_for_fields(owner_fields)
         has_filter = getattr(self, 'pre_owner_filter', None)
         return owner_dict if has_filter is None else self.pre_owner_filter(owner_dict)
 
