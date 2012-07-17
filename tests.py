@@ -269,5 +269,31 @@ class TestAPIShareCan(unittest.TestCase):
         id = user.id
         self.assertEqual(id, user.dict_for_save()['id'])
 
+    def test_url_field(self):
+        class User(pydictobj.Document):
+            blog_url = pydictobj.URLField(max_length=64)
+
+        user = User()
+        user.blog_url = 'http://www.yahoo.com/truc?par=23&machin=23'
+        self.assertTrue(user.validate())
+        user.blog_url = 'bob'
+        self.assertFalse(user.validate())
+        user.blog_url = 'http://www.yahoo.com/truc?par=23&machin=23&param=1234567890aabcdef'
+        self.assertFalse(user.validate())
+
+    def test_email_field(self):
+        class User(pydictobj.Document):
+            email = pydictobj.EmailField(max_length=32)
+
+        user = User()
+        user.email = 'bob@sponge.com'
+        self.assertTrue(user.validate())
+
+        user.email = 'sponge.com'
+        self.assertFalse(user.validate())
+
+        user.email = '123456789012345678901234567890@spong.com'
+        self.assertFalse(user.validate())
+
 if __name__ == "__main__":
     unittest.main()

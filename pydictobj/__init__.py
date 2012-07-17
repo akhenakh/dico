@@ -1,7 +1,7 @@
 import re
 import datetime
 
-URL_REGEX = re.compile(
+URL_REGEX_COMPILED = re.compile(
     r'^https?://'
     r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'
     r'localhost|'
@@ -10,7 +10,7 @@ URL_REGEX = re.compile(
     r'(?:/?|[/?]\S+)$', re.IGNORECASE
 )
 
-EMAIL_REGEX = re.compile(
+EMAIL_REGEX_COMPILED = re.compile(
     # dot-atom
     r"(^[-!#$%&'*+/=?^_`{}|~0-9A-Z]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z]+)*"
     # quoted-string
@@ -88,6 +88,16 @@ class StringField(BaseField):
             return False
 
         return True
+
+
+class URLField(StringField):
+    def __init__(self, **kwargs):
+        super(URLField, self).__init__(compiled_regex=URL_REGEX_COMPILED, **kwargs)
+
+
+class EmailField(StringField):
+    def __init__(self, **kwargs):
+        super(EmailField, self).__init__(compiled_regex=EMAIL_REGEX_COMPILED, **kwargs)
 
 
 class IntegerField(BaseField):
