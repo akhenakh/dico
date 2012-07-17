@@ -163,7 +163,7 @@ We know we want to update only some fields firstname and email, so we fetch the 
 	>>> user.email = 'bob@yahoo.com'
 	>>> user.validate_partial()
 	True
-	>>> db.user.update({'_id': user.id}, user.modified_fields())
+	>>> db.user.update({'_id': user.id}, user.dict_for_modified_fields())
 	
 	>>> user = User()
 	>>> user.email = 'sponge@bob.com'

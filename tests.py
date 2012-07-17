@@ -160,12 +160,18 @@ class TestAPIShareCan(unittest.TestCase):
     def test_modified_fields(self):
         class User(pydictobj.Document):
             name = pydictobj.StringField()
+            id = pydictobj.IntegerField()
 
         user = User()
         self.assertEqual(user.modified_fields(), set())
 
         user.name = 'Bob'
         self.assertIn('name', user.modified_fields())
+
+        modified_dict = user.dict_for_modified_fields()
+        self.assertIn('name', modified_dict)
+        self.assertEqual(modified_dict['name'], 'Bob')
+        self.assertEqual(len(modified_dict.keys()), 1)
 
     def test_choices(self):
         class User(pydictobj.Document):

@@ -326,3 +326,8 @@ class Document(object):
         """ return a set of fields modified via setters
         """
         return self._modified_fields
+
+    def dict_for_modified_fields(self):
+        """ return a dict of fields modified via setters as key with value
+        """
+        return {good_key: self._data[good_key] for good_key in self._modified_fields}
