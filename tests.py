@@ -1,6 +1,10 @@
 import pydictobj
 import unittest
 import re
+import datetime
+import pydictobj.mongo
+from bson.objectid import ObjectId
+import random
 
 class TestAPIShareCan(unittest.TestCase):
     def setUp(self):
@@ -234,6 +238,36 @@ class TestAPIShareCan(unittest.TestCase):
         public_dict = user.dict_for_public()
         self.assertIn('age', public_dict)
         self.assertEqual(public_dict['age'], 42)
+
+    def test_datetime_field(self):
+        class User(pydictobj.Document):
+            creation_date = pydictobj.DateTimeField(default=datetime.datetime.utcnow)
+
+        user = User()
+        self.assertTrue(isinstance(user.creation_date, datetime.datetime))
+
+        user.creation_date = datetime.datetime.utcnow()
+        self.assertTrue(user.validate())
+        user.creation_date = 3
+        self.assertFalse(user.validate())
+
+    def test_objectid_field(self):
+        class User(pydictobj.Document):
+            id = pydictobj.mongo.ObjectIdField(default=ObjectId)
+
+        user = User()
+        user.id = ObjectId('500535541aebce0dfc000000')
+        self.assertTrue(user.validate())
+        user.id = 4
+        self.assertFalse(user.validate())
+
+    def test_ensure_default_getter_equals(self):
+        class User(pydictobj.Document):
+            id = pydictobj.mongo.ObjectIdField(default=ObjectId)
+
+        user = User()
+        id = user.id
+        self.assertEqual(id, user.dict_for_save()['id'])
 
 if __name__ == "__main__":
     unittest.main()

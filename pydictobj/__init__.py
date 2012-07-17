@@ -1,4 +1,5 @@
 import re
+import datetime
 
 URL_REGEX = re.compile(
     r'^https?://'
@@ -52,7 +53,8 @@ class BaseField(object):
             # Allow callable default values
             if callable(value):
                 value = value()
-
+            if value is not None:
+                instance._data[self.field_name] = value
         return value
 
 
@@ -61,6 +63,7 @@ class BooleanField(BaseField):
         if not isinstance(value, (bool)):
             return False
         return True
+
 
 class StringField(BaseField):
     """A unicode string field.
@@ -90,6 +93,13 @@ class StringField(BaseField):
 class IntegerField(BaseField):
     def _validate(self, value):
         if not isinstance(value, (int, long)):
+            return False
+        return True
+
+
+class DateTimeField(BaseField):
+    def _validate(self, value):
+        if not isinstance(value, (datetime.datetime)):
             return False
         return True
 
