@@ -155,7 +155,8 @@ class Document(object):
     def _validate_fields(self, fields_list, stop_on_required=True):
         """ take a list of fields name and validate them
             return True if all fields in fields_list required are valid and set
-            return True if fields in fields_list are valid and set if stop_on_required=False
+            return True if fields in fields_list are valid
+            and set if stop_on_required=False
         """
         for field_name in fields_list:
             # if field name is not in the field list but a property
@@ -196,9 +197,13 @@ class Document(object):
         """
         if stop_on_required and self._is_valid:
             return True
-        is_valid = self._validate_fields(self._fields.keys(), stop_on_required=stop_on_required)
+
+        is_valid = self._validate_fields(self._fields.keys(),
+            stop_on_required=stop_on_required)
+
         if stop_on_required and is_valid:
             self._is_valid = True
+
         return is_valid
 
     def validate_partial(self):
@@ -231,14 +236,17 @@ class Document(object):
         public_dict = {good_key: self._data[good_key] for good_key in fields_list
                        if good_key in self._fields.keys()}
 
-        # find all the keys in public_fields that are NOT fields and form a dict with getattr on the obj
-        property_dict =  {key_not_real_field:getattr(self, key_not_real_field)
+        # find all the keys in public_fields that are NOT fields
+        # return a dict with getattr on the obj
+        property_dict =  {key_not_real_field: getattr(self, key_not_real_field)
                           for key_not_real_field in fields_list
                           if key_not_real_field not in self._fields.keys()}
+
         return dict(public_dict.items() + property_dict.items())
 
     def dict_for_public(self, json_compliant=False):
-        """ return a dict with keys specified in public_fields with value from _data or self.property
+        """ return a dict with keys specified in public_fields
+            with value from _data or self.property
             or return empty dict
         """
         return self.dict_for_fields(self.public_fields)

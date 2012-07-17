@@ -1,12 +1,12 @@
 try:
-    from bson.objectid import ObjectId
+    import bson.objectid
 except ImportError:
     raise ImportError(
         'Using the ObjectIdField requires Pymongo. '
     )
-import bson.objectid
 
 from . import BaseField
+
 
 class ObjectIdField(BaseField):
     def _validate(self, value):
