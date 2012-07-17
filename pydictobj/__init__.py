@@ -136,7 +136,29 @@ class DateTimeField(BaseField):
 
 
 class ListField(BaseField):
-    pass
+    def __init__(self, subfield, max_length=0, min_length=0, **kwargs):
+        self.subfield = subfield
+        self.max_length = max_length
+        self.min_length = min_length
+
+        if not isinstance(subfield, BaseField):
+            raise  AttributeError('ListField only accepts BaseField subclass')
+
+        super(ListField, self).__init__(**kwargs)
+
+    def _validate(self, value):
+        if not isinstance(value, list):
+            return False
+        if self.max_length != 0:
+            if len(value) > self.max_length:
+                return False
+        if self.min_length != 0:
+            if len(value) < self.min_length:
+                return False
+        for entry in value:
+            if not self.subfield._validate(entry):
+                return False
+        return True
 
 
 class DocumentMetaClass(type):

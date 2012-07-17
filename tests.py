@@ -343,6 +343,42 @@ class TestAPIShareCan(unittest.TestCase):
         user.ip = 'bob'
         self.assertFalse(user.validate())
 
+    def test_list_field(self):
+        class User(pydictobj.Document):
+            friends = pydictobj.ListField(pydictobj.IntegerField())
+
+        user = User()
+        user.friends = [1212, 34343, 422323]
+        self.assertTrue(user.validate())
+
+        user.friends = ['a', 34343, 422323]
+        self.assertFalse(user.validate())
+
+        user.friends = 444
+        self.assertFalse(user.validate())
+
+        user.friends = []
+        self.assertTrue(user.validate())
+
+        class User(pydictobj.Document):
+            friends = pydictobj.ListField(pydictobj.IntegerField(), required=True)
+
+        user = User()
+        self.assertFalse(user.validate())
+
+        user.friends = [1]
+        self.assertTrue(user.validate())
+
+        class User(pydictobj.Document):
+            friends = pydictobj.ListField(pydictobj.IntegerField(), min_length=2, max_length=4)
+
+        user = User()
+        user.friends = [1,2,3,4,5]
+        self.assertFalse(user.validate())
+        user.friends = [1,2,3]
+        self.assertTrue(user.validate())
+        user.friends = [1]
+        self.assertFalse(user.validate())
 
 if __name__ == "__main__":
     unittest.main()
