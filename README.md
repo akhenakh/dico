@@ -31,6 +31,8 @@ Here are the usual patterns with Pydictobj:
     >>> post.dict_for_save()
     {'id': 45, 'title': 'New post', 'body': "I'm a new post"}
 
+If dict_for_save is called on **not valid data** it will raise a **ValidationException**.
+
 ### Create an object populate from existing data and modify it
 
     >>> dict_from_db = {'id': '50000685467ffd11d1000001', 'title': 'A post', 'body': "I'm a post"}
@@ -73,6 +75,7 @@ When working with real data, you will not fetch **every** fields from your DB, b
 	True
 
 ### ListField
+A list can contains n elements of field's type.
 
     class User(pydictobj.Document):
         friends = pydictobj.ListField(pydictobj.IntegerField(), min_length=2, max_length=4)
@@ -175,32 +178,30 @@ We know we want to update only some fields firstname and email, so we fetch the 
 	>>> user.dict_for_public()
 	{'id':'50000685467ffd11d1000001', 'firstname':'Bob'}
         
-## Features wanted
+## Features
 
-* can transform id to \_id before serialize (use a transform pattern applicable everywhere ?)
-* required is checked for full object validate, but individual fields can be tested see partial
-* Transform field rename field before exporting, example: remove microseconds before public serialization on a datefield (as JSON cls hooks)
+* required fields are checked for full object validation, but individual fields can be tested with validate_partial
 * To dict for owner (eg user object, the owner can see the fields email)
 * To dict for public (eg user object, public can't see the fields email)
 * To dict for mongo db or sql saving
-* pre save and post save hook
-* Track changed field to use update only changed fields with mongo
-* Can serialize properties
-* partial = not all fields, can create an object with only some fields you want to export (to avoid select * ) 
-* Post save commit() reset modified fields
+* Transform field rename field before exporting, example: remove microseconds before public serialization on a datefield (as JSON cls hooks) or to transform id to \_id before serialize
+* pre save filter, pre owner filter, pre public filter
+* Track modified fields, for example to use update only changed fields with mongo
+* Can serialize properties to owner and public dict
+* partial = not all fields, can create an object with only some fields you want to export (to avoid select * )
 * Regexp compiled only one time
+* use \_\_slots\_\_ for memory optimization and to get on AttributeError on typo
 
 ## Ideas
 * Convert all fields to json acceptable type, (for use with ujson directly), a param in dict\_for\_public(json_convert=True) ?
 * Use it as form validation? (I'm not sure I need this: my REST views are not exactly mapped to my objects)
 * Can external user modify this field? Eg id
-* use \_\_slots\_\_ as we know the fields ?
 * Returns a representation of this pydictobj class as a JSON schema. (nizox)
+* Post save commit() reset modified fields
 
 ## TODO
 * Implements json_compliant
-* errors
-* hooks
+* errors explanation
 * the continue in _validate_fields does not show up in coverage
 * documentation for ValidationException on save()
 
