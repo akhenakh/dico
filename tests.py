@@ -380,5 +380,53 @@ class TestAPIShareCan(unittest.TestCase):
         user.friends = [1]
         self.assertFalse(user.validate())
 
+    def test_pre_save(self):
+        class User(pydictobj.Document):
+            id = pydictobj.IntegerField()
+
+            def rename_id_before_save(self, filter_dict):
+                filter_dict['_id'] = filter_dict['id']
+                del filter_dict['id']
+                return filter_dict
+
+            pre_save_filter = rename_id_before_save
+
+        user = User()
+        user.id = 53
+
+        self.assertIn('_id', user.dict_for_save())
+
+    def test_mongo_example_document(self):
+        class MongoUser(pydictobj.Document):
+            id = pydictobj.mongo.ObjectIdField(aliases=['_id'], required=True, default=ObjectId)
+            name = pydictobj.StringField()
+
+            def rename_id_before_save(self, filter_dict):
+                if 'id' in filter_dict:
+                    filter_dict['_id'] = filter_dict['id']
+                    del filter_dict['id']
+                return filter_dict
+
+            pre_save_filter = rename_id_before_save
+            public_fields = ['id', 'name']
+
+        user = MongoUser()
+        user.name = 'Bob'
+
+        save_dict = user.dict_for_save()
+        self.assertIn('_id', save_dict)
+
+    def test_slots(self):
+        class User(pydictobj.Document):
+            id = pydictobj.IntegerField()
+
+        user = User()
+        error = False
+        try:
+            user.truc = 2
+        except AttributeError:
+            error = True
+        self.assertTrue(error)
+
 if __name__ == "__main__":
     unittest.main()

@@ -90,6 +90,7 @@ class StringField(BaseField):
 
         return True
 
+
 class IPAdressField(StringField):
     """ validate ipv4 and ipv6
     """
@@ -142,7 +143,7 @@ class ListField(BaseField):
         self.min_length = min_length
 
         if not isinstance(subfield, BaseField):
-            raise  AttributeError('ListField only accepts BaseField subclass')
+            raise AttributeError('ListField only accepts BaseField subclass')
 
         super(ListField, self).__init__(**kwargs)
 
@@ -164,9 +165,7 @@ class ListField(BaseField):
 class DocumentMetaClass(type):
     def __new__(cls, name, bases, attrs):
         fields = {}
-
-        klass = type.__new__(cls, name, bases, attrs)
-        klass._aliases_dict = {}
+        aliases = {}
         for attr_name, attr_value in attrs.items():
             has_class = hasattr(attr_value, "__class__")
             if has_class and issubclass(attr_value.__class__, BaseField):
@@ -176,10 +175,18 @@ class DocumentMetaClass(type):
                 # test for aliases
                 if fields[attr_name].aliases is not None:
                     for alias in fields[attr_name].aliases:
-                        klass._aliases_dict[alias] = attr_name
+                        aliases[alias] = attr_name
 
+        slots = fields.keys() + ['_data', '_modified_fields', '_is_valid',
+            'public_fields', 'owner_fields', 'pre_save_filter', 'pre_public_filter'
+            'pre_owner_filter', '_fields']
+
+        attrs['__slots__'] = tuple(slots)
+        klass = type.__new__(cls, name, bases, attrs)
+        klass._aliases_dict = aliases
         klass._fields = fields
-        klass.__slots__ = fields.keys()
+        klass._data = {}
+
         return klass
 
 
@@ -187,7 +194,6 @@ class Document(object):
     __metaclass__ = DocumentMetaClass
 
     def __init__(self, **values):
-        self._data = {}
         self._modified_fields = set()
         # optimization to avoid double validate() if nothing has changed
         self._is_valid = False
@@ -202,16 +208,6 @@ class Document(object):
             if key in self._aliases_dict:
                 real_key = self._aliases_dict[key]
                 self._data[real_key] = values[key]
-
-    public_fields = None
-    owner_fields = None
-
-    pre_save_filter = None
-    post_save_filter = None
-    pre_public_filter = None
-    post_public_filter = None
-    pre_owner_filter = None
-    post_owner_filter = None
 
     def _validate_fields(self, fields_list, stop_on_required=True):
         """ take a list of fields name and validate them
@@ -281,7 +277,9 @@ class Document(object):
             return self._data
         if not self.validate():
             raise ValidationException()
-        return self._data
+        save_dict = self._data
+        has_filter = getattr(self, 'pre_save_filter', None)
+        return self._data if has_filter is None else self.pre_save_filter(save_dict)
 
     def dict_for_fields(self, fields_list=None, json_compliant=False):
         """ return a dict with keys specified in fields with in _data or self.property
@@ -293,7 +291,8 @@ class Document(object):
             if not self._validate_fields(fields_list, stop_on_required=True):
                 raise ValidationException()
 
-        # find all the keys in fields_list that are fields and form a dict with the value in _data
+        # find all the keys in fields_list that are fields
+        # and form a dict with the value in _data
         public_dict = {good_key: self._data[good_key] for good_key in fields_list
                        if good_key in self._fields.keys()}
 
@@ -310,12 +309,18 @@ class Document(object):
             with value from _data or self.property
             or return empty dict
         """
-        return self.dict_for_fields(self.public_fields)
+        public_fields = getattr(self, 'public_fields', [])
+        public_dict = self.dict_for_fields(public_fields)
+        has_filter = getattr(self, 'pre_public_filter', None)
+        return public_dict if has_filter is None else self.pre_public_filter(public_dict)
 
     def dict_for_owner(self, json_compliant=False):
         """ return a dict with keys specified in owner_fields or return empty dict
         """
-        return self.dict_for_fields(self.owner_fields)
+        owner_fields = getattr(self, 'owner_fields', [])
+        owner_dict = self.dict_for_fields(owner_fields)
+        has_filter = getattr(self, 'pre_owner_filter', None)
+        return owner_dict if has_filter is None else self.pre_owner_filter(owner_dict)
 
     def modified_fields(self):
         """ return a set of fields modified via setters

@@ -72,6 +72,11 @@ When working with real data, you will not fetch **every** fields from your DB, b
 	>>> post2.validate_partial()
 	True
 
+### ListField
+
+    class User(pydictobj.Document):
+        friends = pydictobj.ListField(pydictobj.IntegerField(), min_length=2, max_length=4)
+
 ### Prepare object for export and adjust visibility of fields
 
     class User(Document):
@@ -101,14 +106,11 @@ In mongo the id is called _id so we need a way to make the Document accept it is
 	'50000685467ffd11d1000001'
 	
 ### Hooks filters
-There are 6 hooks filter to manipulate data before and after exports
+There are 3 hooks filter to manipulate data before and after exports
 
 * pre\_save_filter
-* post\_save_filter
 * pre\_owner_filter
-* post\_owner_filter
 * pre\_public_filter
-* post\_public_filter
 
 Here we are renaming firstname field to first_name
 
