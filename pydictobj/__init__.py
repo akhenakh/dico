@@ -1,5 +1,6 @@
 import re
 import datetime
+import socket
 
 URL_REGEX_COMPILED = re.compile(
     r'^https?://'
@@ -68,8 +69,6 @@ class BooleanField(BaseField):
 
 
 class StringField(BaseField):
-    """A unicode string field.
-    """
     def __init__(self, compiled_regex=None, max_length=None, min_length=None, **kwargs):
         self.compiled_regex = compiled_regex
         self.max_length = max_length
@@ -91,6 +90,19 @@ class StringField(BaseField):
 
         return True
 
+class IPAdressField(StringField):
+    """ validate ipv4 and ipv6
+    """
+    def _validate(self, value):
+        try:
+            socket.inet_pton(socket.AF_INET, value)
+        except socket.error:
+            try:
+                socket.inet_pton(socket.AF_INET6, value)
+            except socket.error:
+                return False
+        return True
+
 
 class URLField(StringField):
     def __init__(self, **kwargs):
@@ -105,6 +117,13 @@ class EmailField(StringField):
 class IntegerField(BaseField):
     def _validate(self, value):
         if not isinstance(value, (int, long)):
+            return False
+        return True
+
+
+class FloatField(BaseField):
+    def _validate(self, value):
+        if not isinstance(value, (float, int)):
             return False
         return True
 

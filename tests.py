@@ -305,5 +305,44 @@ class TestAPIShareCan(unittest.TestCase):
         user = User(aid=4)
         self.assertEqual(user.id, 4)
 
+    def test_float_field(self):
+        class User(pydictobj.Document):
+            lat = pydictobj.FloatField()
+
+        user = User()
+        user.lat = 4.5
+        self.assertTrue(user.validate())
+        user.lat = 4
+        self.assertTrue(user.validate())
+        user.lat = 'b'
+        self.assertFalse(user.validate())
+
+    def test_attach_method(self):
+        class User(pydictobj.Document):
+            id = pydictobj.IntegerField()
+
+            def echo(self, value):
+                return value
+
+        user = User()
+        user.id = 3
+        self.assertTrue(user.validate())
+        self.assertEqual(user.echo('hello'), 'hello')
+
+    def test_ip_address(self):
+        class User(pydictobj.Document):
+            ip = pydictobj.IPAdressField()
+
+        user = User()
+        user.ip = '194.117.200.10'
+        self.assertTrue(user.validate())
+        user.ip = '::1'
+        self.assertTrue(user.validate())
+        user.ip = '2001:0db8:85a3:0042:0000:8a2e:0370:7334'
+        self.assertTrue(user.validate())
+        user.ip = 'bob'
+        self.assertFalse(user.validate())
+
+
 if __name__ == "__main__":
     unittest.main()
