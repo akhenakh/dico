@@ -60,6 +60,43 @@ class BaseField(object):
         return value
 
 
+class ListField(BaseField):
+    def __init__(self, subfield, max_length=0, min_length=0, **kwargs):
+        self.subfield = subfield
+        self.max_length = max_length
+        self.min_length = min_length
+
+        if not isinstance(subfield, (BaseField)):
+            raise AttributeError('ListField only accepts BaseField subclass')
+
+        super(ListField, self).__init__(**kwargs)
+
+    def _validate(self, value):
+        if not isinstance(value, list):
+            return False
+        if self.max_length != 0:
+            if len(value) > self.max_length:
+                return False
+        if self.min_length != 0:
+            if len(value) < self.min_length:
+                return False
+        for entry in value:
+            if not self.subfield._validate(entry):
+                return False
+        return True
+
+    def __get__(self, instance, owner):
+        """ we need need to override get to provide a way for list to be init as []
+            before "instantiation" as we want to obj.field.append
+        """
+        value = super(ListField, self).__get__(instance, owner)
+
+        if value is None:
+            instance._data[self.field_name] = []
+            return instance._data[self.field_name]
+
+        return value
+
 class BooleanField(BaseField):
     def _validate(self, value):
         if not isinstance(value, (bool)):
@@ -132,32 +169,6 @@ class DateTimeField(BaseField):
     def _validate(self, value):
         if not isinstance(value, (datetime.datetime)):
             return False
-        return True
-
-
-class ListField(BaseField):
-    def __init__(self, subfield, max_length=0, min_length=0, **kwargs):
-        self.subfield = subfield
-        self.max_length = max_length
-        self.min_length = min_length
-
-        if not isinstance(subfield, (BaseField)):
-            raise AttributeError('ListField only accepts BaseField subclass')
-
-        super(ListField, self).__init__(**kwargs)
-
-    def _validate(self, value):
-        if not isinstance(value, list):
-            return False
-        if self.max_length != 0:
-            if len(value) > self.max_length:
-                return False
-        if self.min_length != 0:
-            if len(value) < self.min_length:
-                return False
-        for entry in value:
-            if not self.subfield._validate(entry):
-                return False
         return True
 
 

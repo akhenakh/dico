@@ -525,6 +525,11 @@ class TestAPIShareCan(unittest.TestCase):
         user.tokens.append(token)
         self.assertEqual(len(user.tokens), 1)
 
+        user = User()
+        user.tokens = None
+        user.tokens.append(token)
+        self.assertEqual(len(user.tokens), 1)
+
     def test_embedded(self):
         class OAuthToken(pydictobj.Document):
             consumer_secret = pydictobj.StringField(required=True, max_length=32)
