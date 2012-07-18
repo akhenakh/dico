@@ -529,16 +529,20 @@ class TestAPIShareCan(unittest.TestCase):
         user.tokens = None
         user.tokens.append(token)
         self.assertEqual(len(user.tokens), 1)
+        user_dict = user.dict_for_save()
+        self.assertEqual(len(user_dict['tokens']), 1)
+        self.assertIn('consumer_secret', user_dict['tokens'][0])
 
     def test_embedded(self):
         class OAuthToken(pydictobj.Document):
             consumer_secret = pydictobj.StringField(required=True, max_length=32)
             active = pydictobj.BooleanField(default=True)
-            token_id = pydictobj.mongo.ObjectIdField(required=True, default=ObjectId)
 
         class User(pydictobj.Document):
             id = pydictobj.IntegerField()
             token = pydictobj.EmbeddedDocumentField(OAuthToken)
+
+            public_fields = ['token']
 
         user = User()
         user.token = 3
@@ -549,6 +553,20 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertFalse(user.validate())
         user.token = OAuthToken(consumer_secret='fac470fcd')
         self.assertTrue(user.validate())
+        user.token = OAuthToken(consumer_secret='fac470fcd')
+        user_dict = user.dict_for_save()
+        self.assertIn('token', user_dict)
+        self.assertIn('consumer_secret', user_dict['token'])
+
+        # there is a bug in validate() that modify the content when embedded
+        user.token = OAuthToken(consumer_secret='fac470fcd')
+        user.validate()
+        user_dict = user.dict_for_save()
+        self.assertIn('token', user_dict)
+        self.assertIn('consumer_secret', user_dict['token'])
+
+        public_dict = user.dict_for_public()
+        self.assertIn('token', public_dict)
 
     def test_sublassing(self):
         class BaseDocument(pydictobj.Document):

@@ -310,17 +310,37 @@ class Document(object):
 
         return to_filter
 
+    def _call_for_save_on_child(self, json_compliant=False):
+        """ this will call dict_for_save() on EmbeddedDocument and return a dict
+            containing self._data with key replace by the result
+        """
+        data = self._data
+        for field in self._fields:
+            if isinstance(self._fields[field], EmbeddedDocumentField):
+                if field in self._data and self._data[field] is not None:
+                    data[field] = self._data[field].dict_for_save(json_compliant)
+
+            if isinstance(self._fields[field], ListField):
+                if isinstance(self._fields[field].subfield, EmbeddedDocumentField):
+                    data[field] = [doc.dict_for_save() for doc in self._data[field]]
+
+        return data
+
     def dict_for_save(self, json_compliant=False):
         """ return a dict with field_name:value
             raise ValidationError if not valid
         """
         if self._is_valid:
-            return self._data
+            return self._call_for_save_on_child(json_compliant)
         if not self.validate():
             raise ValidationException()
         save_dict = self._data
         has_filter = getattr(self, 'pre_save_filter', None)
-        return self._data if has_filter is None else \
+
+        # we have to call dict_for_save() on embedded document
+        data = self._call_for_save_on_child(json_compliant)
+
+        return data if has_filter is None else \
             self._apply_filters(self.pre_save_filter, save_dict)
 
     def _dict_for_fields(self, fields_list=None, json_compliant=False):
