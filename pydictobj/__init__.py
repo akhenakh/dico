@@ -199,8 +199,6 @@ class DocumentMetaClass(type):
         klass = type.__new__(cls, name, bases, attrs)
         klass._aliases_dict = aliases
         klass._fields = fields
-        klass._data = {}
-
         return klass
 
 
@@ -211,6 +209,7 @@ class Document(object):
         self._modified_fields = set()
         # optimization to avoid double validate() if nothing has changed
         self._is_valid = False
+        self._data = {}
         # initialized by metaclass
         #self._fields
         #self._aliases_dict

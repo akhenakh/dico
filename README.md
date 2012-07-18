@@ -303,6 +303,7 @@ PyDictObj is available via [pypi](http://pypi.python.org).
 ## Contributors
 
 * [Fabrice aneche](https://github.com/akhenakh)
+* [Nicolas Vivet](https://github.com/nizox)
 * [James Dennis](https://github.com/j2labs) for inspiration
 
 ## License

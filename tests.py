@@ -485,6 +485,16 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertEqual({}, user._dict_for_fields())
 
 
+    def test_creastion_double_bug(self):
+        class TestObj(pydictobj.Document):
+            id = pydictobj.IntegerField()
+
+        test = TestObj()
+        test.id = 45
+        test = TestObj()
+        test = TestObj()
+        self.assertNotEqual(test.id, 45)
+
     def test_list_embedded(self):
         class OAuthToken(pydictobj.Document):
             consumer_secret = pydictobj.StringField(required=True, max_length=32)
@@ -510,6 +520,10 @@ class TestAPIShareCan(unittest.TestCase):
         user.tokens = [1]
 
         self.assertFalse(user.validate())
+
+        user = User()
+        user.tokens.append(token)
+        self.assertEqual(len(user.tokens), 1)
 
     def test_embedded(self):
         class OAuthToken(pydictobj.Document):
