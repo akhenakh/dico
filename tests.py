@@ -367,7 +367,7 @@ class TestAPIShareCan(unittest.TestCase):
 
     def test_ip_address(self):
         class User(pydictobj.Document):
-            ip = pydictobj.IPAdressField()
+            ip = pydictobj.IPAddressField()
 
         user = User()
         user.ip = '194.117.200.10'

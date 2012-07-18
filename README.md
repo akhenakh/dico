@@ -75,10 +75,23 @@ When working with real data, you will not fetch **every** fields from your DB, b
 	True
 
 ### ListField
-A list can contains n elements of field's type.
+A list can contains n elements of a field's type.
 
     class User(pydictobj.Document):
         friends = pydictobj.ListField(pydictobj.IntegerField(), min_length=2, max_length=4)
+
+### Field types
+
+* BooleanField
+* StringField
+* IPAddressField
+* URLField
+* EmailField
+* IntegerField
+* FloatField
+* DateTimeField
+* ListField
+* EmbeddedDocumentField
 
 ### Prepare object for export and adjust visibility of fields
 
@@ -133,12 +146,19 @@ Here we are renaming firstname field to first_name
 	>>> user.dict_for_public()
 	{'firstname':'Bob'}
 
-You can use partial to call function with arguments:
+You can use partial to call function with arguments
+
     from functools import partial
+
     class User(pydictobj.Document):
         id = pydictobj.IntegerField()
+        def rename_field(old_field, new_field, filter_dict):
+        	if old_field in filter_dict:
+        	    filter_dict[new_field] = filter_dict[old_field]
+        	    del filter_dict[old_field]
+        	return filter_dict
 
-        pre_save_filter = [partial(pydictobj.rename_field, 'id', '_id')]
+        pre_save_filter = [partial(rename_field, 'id', '_id')]
         public_fields = ['id', 'name']
 
 	
@@ -157,7 +177,48 @@ Properties are suitable for serialization
 		
 		>>> user.dict_for_public()
 		{'full_name': 'Sponge Bob'}
-    
+
+### Embedded fields
+You may embed document in document, directly or within a list
+
+    class OAuthToken(pydictobj.Document):
+        consumer_secret = pydictobj.StringField(required=True, max_length=32)
+        active = pydictobj.BooleanField(default=True)
+        token_id = pydictobj.mongo.ObjectIdField(required=True, default=ObjectId)
+
+    class User(pydictobj.Document):
+        id = pydictobj.IntegerField()
+        token = pydictobj.EmbeddedDocumentField(OAuthToken)
+
+    >>> user = User()
+    >>> user.token = 3
+    >>> user.validate()
+    False
+
+    >>> user.token = OAuthToken()
+    >>> user.validate()
+    False
+    >>> user.token = OAuthToken(consumer_secret='fac470fcd')
+    >>> user.validate()
+    False
+
+    class OAuthToken(pydictobj.Document):
+        consumer_secret = pydictobj.StringField(required=True, max_length=32)
+        active = pydictobj.BooleanField(default=True)
+        token_id = pydictobj.mongo.ObjectIdField(required=True, default=ObjectId)
+
+    class User(pydictobj.Document):
+        id = pydictobj.IntegerField()
+        tokens = pydictobj.ListField(pydictobj.EmbeddedDocumentField(OAuthToken))
+
+    >>> user = User()
+    >>> user.id = 2
+
+    >>> token = OAuthToken()
+    >>> token.consumer_secret = 'fac470fcd'
+    >>> token2 = OAuthToken()
+    >>> token2.consumer_secret = 'fac470fcd'
+    >>> user.tokens = [token, token2]
     
 ### Example usage with mongo
 We know we want to update only some fields firstname and email, so we fetch the object with no field, update our fields then update, later we create a new user and save it.
@@ -221,6 +282,8 @@ Not the rename_field function which is provided in pydictobj as shortcut.
 * documentation for ValidationException on save()
 * in _apply_filters if call directly a callable not in a list arg error
 * update management for mongo ? (it will become a real ORM)
+* how to deal with filters while subclassing ?
+* release on pypi
 
 ## Differences with dictshield
 * dictshield raise ValueError while setting a property on a document if the data does not match the field, makes validate() useless

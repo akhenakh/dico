@@ -90,7 +90,7 @@ class StringField(BaseField):
         return True
 
 
-class IPAdressField(StringField):
+class IPAddressField(StringField):
     """ validate ipv4 and ipv6
     """
     def _validate(self, value):
