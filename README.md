@@ -1,11 +1,11 @@
-# Pydictobj
+# PyDictObj
 
 After using [DictShield](https://github.com/j2labs/dictshield), a "database-agnostic modeling system", I've found the idea very usefull when dealing with NoSQL database, but want to choose another direction.
-Pydictobj is an attempt to solve my needs, heavily inspired by DictShield.
+PyDictObj is an attempt to solve my needs, heavily inspired by DictShield.
 
 Most of the time you're manipulating data from a database server, modify it and save, especially in web development.
 
-Here are the usual patterns with Pydictobj:
+Here are the usual patterns with PyDictObj:
 
 ### Create an object from scratch and validate fields
 
@@ -222,7 +222,7 @@ You may embed document in document, directly or within a list
     
 ### Example usage with mongo
 We know we want to update only some fields firstname and email, so we fetch the object with no field, update our fields then update, later we create a new user and save it.
-Not the rename_field function which is provided in pydictobj as shortcut.
+Not the rename_field function which is provided in PyDictObj as shortcut.
 
     class User(Document):
 		id = ObjectIdField(default=ObjectId(), required=True, aliases=['_id'])
@@ -272,7 +272,7 @@ Not the rename_field function which is provided in pydictobj as shortcut.
 * Convert all fields to json acceptable type, (for use with ujson directly), a param in dict\_for\_public(json_convert=True) ?
 * Use it as form validation? (I'm not sure I need this: my REST views are not exactly mapped to my objects)
 * Can external user modify this field? Eg id
-* Returns a representation of this pydictobj class as a JSON schema. (nizox)
+* Returns a representation of this PyDictObj class as a JSON schema. (nizox)
 * Post save commit() reset modified fields
 
 ## TODO
@@ -291,3 +291,20 @@ Not the rename_field function which is provided in pydictobj as shortcut.
 * dictshield does not use __slots__
 * dictshield is more complete but complexe
 * dictshield has separates files in packages, makes import boring
+
+
+## Installing
+
+PyDictObj is available via [pypi](http://pypi.python.org).
+
+    pip install pydictobj
+
+
+## Contributors
+
+* [Fabrice aneche](https://github.com/akhenakh)
+* [James Dennis](https://github.com/j2labs) for inspiration
+
+## License
+
+BSD

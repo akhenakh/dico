@@ -4,6 +4,7 @@
 *.EGG
 *.EGG-INFO
 bin
+MANIFEST
 build
 develop-eggs
 downloads
@@ -22,3 +23,4 @@ dist
 .idea/
 
 local_settings.py
+.coverage
