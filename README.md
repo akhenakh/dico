@@ -109,7 +109,7 @@ In mongo the id is called _id so we need a way to make the Document accept it is
 	'50000685467ffd11d1000001'
 	
 ### Hooks filters
-There are 3 hooks filter to manipulate data before and after exports
+There are 3 hooks filter to manipulate data before and after exports, it should be a list of callable to filter
 
 * pre\_save_filter
 * pre\_owner_filter
@@ -125,13 +125,22 @@ Here we are renaming firstname field to first_name
 			return dict	
 		
 		public_fields = ['firstname']
-		pre_save_filter = save_filter
+		pre_save_filter = [save_filter]
 		
 	>>> user = User(firstname='Bob')
 	>>> user.dict_for_save()
 	{'first_name':'Bob'}
 	>>> user.dict_for_public()
 	{'firstname':'Bob'}
+
+You can use partial to call function with arguments:
+    from functools import partial
+    class User(pydictobj.Document):
+        id = pydictobj.IntegerField()
+
+        pre_save_filter = [partial(pydictobj.rename_field, 'id', '_id')]
+        public_fields = ['id', 'name']
+
 	
 ### @properties visibility
 Properties are suitable for serialization
@@ -185,7 +194,7 @@ We know we want to update only some fields firstname and email, so we fetch the 
 * To dict for public (eg user object, public can't see the fields email)
 * To dict for mongo db or sql saving
 * Transform field rename field before exporting, example: remove microseconds before public serialization on a datefield (as JSON cls hooks) or to transform id to \_id before serialize
-* pre save filter, pre owner filter, pre public filter
+* multiple filters, pre save filter, pre owner filter, pre public filter
 * Track modified fields, for example to use update only changed fields with mongo
 * Can serialize properties to owner and public dict
 * partial = not all fields, can create an object with only some fields you want to export (to avoid select * )
@@ -204,6 +213,8 @@ We know we want to update only some fields firstname and email, so we fetch the 
 * errors explanation
 * the continue in _validate_fields does not show up in coverage
 * documentation for ValidationException on save()
+* in _apply_filters if call directly a callable not in a list arg error
 
 ## Differences with dictshield
-* dictshield raise ValueError at object creation if the data does not match the field, makes validate useless
+* dictshield raise ValueError while setting a property on a document if the data does not match the field, makes validate() useless
+

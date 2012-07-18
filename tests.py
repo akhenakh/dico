@@ -5,6 +5,7 @@ import datetime
 import pydictobj.mongo
 from bson.objectid import ObjectId
 import random
+from functools import partial
 
 class TestAPIShareCan(unittest.TestCase):
     def setUp(self):
@@ -400,12 +401,29 @@ class TestAPIShareCan(unittest.TestCase):
         class User(pydictobj.Document):
             id = pydictobj.IntegerField()
 
-            def rename_id_before_save(self, filter_dict):
-                filter_dict['_id'] = filter_dict['id']
-                del filter_dict['id']
+            def rename_id_before_save(filter_dict):
+                if 'id' in filter_dict:
+                    filter_dict['_id'] = filter_dict['id']
+                    del filter_dict['id']
                 return filter_dict
 
-            pre_save_filter = rename_id_before_save
+            def add_name(filter_dict):
+                filter_dict['name'] = 'Paule'
+                return filter_dict
+
+            pre_save_filter = [rename_id_before_save, add_name]
+
+        user = User()
+        user.id = 53
+
+        self.assertIn('_id', user.dict_for_save())
+        self.assertIn('name', user.dict_for_save())
+
+    def test_pre_save_partial(self):
+        class User(pydictobj.Document):
+            id = pydictobj.IntegerField()
+
+            pre_save_filter = [partial(pydictobj.rename_field, 'id', '_id')]
 
         user = User()
         user.id = 53
@@ -417,13 +435,7 @@ class TestAPIShareCan(unittest.TestCase):
             id = pydictobj.mongo.ObjectIdField(aliases=['_id'], required=True, default=ObjectId)
             name = pydictobj.StringField()
 
-            def rename_id_before_save(self, filter_dict):
-                if 'id' in filter_dict:
-                    filter_dict['_id'] = filter_dict['id']
-                    del filter_dict['id']
-                return filter_dict
-
-            pre_save_filter = rename_id_before_save
+            pre_save_filter = [partial(pydictobj.rename_field, 'id', '_id')]
             public_fields = ['id', 'name']
 
         user = MongoUser()

@@ -53,7 +53,6 @@ class BaseField(object):
 
         if value is None:
             value = self.default
-            # Allow callable default values
             if callable(value):
                 value = value()
             if value is not None:
@@ -269,6 +268,23 @@ class Document(object):
         """
         return self.validate(stop_on_required=False)
 
+    def _apply_filters(self, filters_list_or_callable, to_filter):
+        """ apply all filters function (one arg the dict to filter)
+        """
+        try:
+            iter(filters_list_or_callable)
+        except TypeError:
+            if callable(filters_list_or_callable):
+                return filters_list_or_callable(to_filter)
+            else:
+                return to_filter
+
+        for filter in filters_list_or_callable:
+            if callable(filter):
+                to_filter = filter(to_filter)
+
+        return to_filter
+
     def dict_for_save(self, json_compliant=False):
         """ return a dict with field_name:value
             raise ValidationError if not valid
@@ -279,7 +295,8 @@ class Document(object):
             raise ValidationException()
         save_dict = self._data
         has_filter = getattr(self, 'pre_save_filter', None)
-        return self._data if has_filter is None else self.pre_save_filter(save_dict)
+        return self._data if has_filter is None else \
+            self._apply_filters(self.pre_save_filter, save_dict)
 
     def _dict_for_fields(self, fields_list=None, json_compliant=False):
         """ return a dict with keys specified in fields with in _data or self.property
@@ -312,7 +329,8 @@ class Document(object):
         public_fields = getattr(self, 'public_fields', [])
         public_dict = self._dict_for_fields(public_fields)
         has_filter = getattr(self, 'pre_public_filter', None)
-        return public_dict if has_filter is None else self.pre_public_filter(public_dict)
+        return public_dict if has_filter is None else\
+            self._apply_filters(self.pre_public_filter, public_dict)
 
     def dict_for_owner(self, json_compliant=False):
         """ return a dict with keys specified in owner_fields or return empty dict
@@ -320,7 +338,8 @@ class Document(object):
         owner_fields = getattr(self, 'owner_fields', [])
         owner_dict = self._dict_for_fields(owner_fields)
         has_filter = getattr(self, 'pre_owner_filter', None)
-        return owner_dict if has_filter is None else self.pre_owner_filter(owner_dict)
+        return owner_dict if has_filter is None else\
+            self._apply_filters(self.pre_owner_filter, owner_dict)
 
     def modified_fields(self):
         """ return a set of fields modified via setters
@@ -331,3 +350,11 @@ class Document(object):
         """ return a dict of fields modified via setters as key with value
         """
         return {good_key: self._data[good_key] for good_key in self._modified_fields}
+
+
+# Filters
+def rename_field(old_name, new_name, dict_to_filter):
+    if old_name in dict_to_filter:
+        dict_to_filter[new_name] = old_name
+        del dict_to_filter[old_name]
+    return dict_to_filter
