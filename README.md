@@ -120,7 +120,7 @@ Here we are renaming firstname field to first_name
     class User(Document):
         firstname = StringField(required=True, max_length=40)
 		def save_filter(dict):
-			dict['_first_name] = dict['firstname']
+			dict['first_name] = dict['firstname']
 			del dict['id']
 			return dict	
 		
@@ -161,12 +161,14 @@ Properties are suitable for serialization
     
 ### Example usage with mongo
 We know we want to update only some fields firstname and email, so we fetch the object with no field, update our fields then update, later we create a new user and save it.
+Not the rename_field function which is provided in pydictobj as shortcut.
 
     class User(Document):
 		id = ObjectIdField(default=ObjectId(), required=True, aliases=['_id'])
 		firstname = StringField(required=True, max_length=40)
         email = EmailField()
 
+        pre_save_filter = [partial(pydictobj.rename_field, 'id', '_id')]
 	    public_fields = ['firstname', 'id']
 		
 	>>> user_dict = db.user.find_one({'email':'bob@sponge.com'}, [])
@@ -214,7 +216,11 @@ We know we want to update only some fields firstname and email, so we fetch the 
 * the continue in _validate_fields does not show up in coverage
 * documentation for ValidationException on save()
 * in _apply_filters if call directly a callable not in a list arg error
+* update management for mongo ? (it will become a real ORM)
 
 ## Differences with dictshield
 * dictshield raise ValueError while setting a property on a document if the data does not match the field, makes validate() useless
-
+* dictshield allows unknown properties to be set
+* dictshield does not use __slots__
+* dictshield is more complete but complexe
+* dictshield has separates files in packages, makes import boring
