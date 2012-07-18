@@ -415,6 +415,8 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertTrue(user.validate())
         user.friends = [1]
         self.assertFalse(user.validate())
+        user.friends.append(3)
+        self.assertTrue(user.validate())
 
     def test_pre_save(self):
         class User(pydictobj.Document):
@@ -481,6 +483,68 @@ class TestAPIShareCan(unittest.TestCase):
 
         user = User()
         self.assertEqual({}, user._dict_for_fields())
+
+
+    def test_list_embedded(self):
+        class OAuthToken(pydictobj.Document):
+            consumer_secret = pydictobj.StringField(required=True, max_length=32)
+            active = pydictobj.BooleanField(default=True)
+            token_id = pydictobj.mongo.ObjectIdField(required=True, default=ObjectId)
+
+        class User(pydictobj.Document):
+            id = pydictobj.IntegerField()
+            tokens = pydictobj.ListField(pydictobj.EmbeddedDocumentField(OAuthToken))
+
+        user = User()
+        user.id = 2
+
+        token = OAuthToken()
+        token.consumer_secret = 'fac470fcd'
+        token.token_id = ObjectId()
+
+        user.tokens = [token, token]
+
+        self.assertEqual(user.tokens[0].consumer_secret, 'fac470fcd')
+        self.assertTrue(user.validate())
+
+        user.tokens = [1]
+
+        self.assertFalse(user.validate())
+
+    def test_embedded(self):
+        class OAuthToken(pydictobj.Document):
+            consumer_secret = pydictobj.StringField(required=True, max_length=32)
+            active = pydictobj.BooleanField(default=True)
+            token_id = pydictobj.mongo.ObjectIdField(required=True, default=ObjectId)
+
+        class User(pydictobj.Document):
+            id = pydictobj.IntegerField()
+            token = pydictobj.EmbeddedDocumentField(OAuthToken)
+
+        user = User()
+        user.token = 3
+
+        self.assertFalse(user.validate())
+
+        user.token = OAuthToken()
+        self.assertFalse(user.validate())
+        user.token = OAuthToken(consumer_secret='fac470fcd')
+        self.assertTrue(user.validate())
+
+    def test_sublassing(self):
+        class BaseDocument(pydictobj.Document):
+            id = pydictobj.IntegerField()
+
+        class User(BaseDocument):
+            name = pydictobj.StringField()
+
+        user = User()
+        user.id = 4
+        user.name = 'Bob'
+
+        self.assertTrue(user.validate())
+
+        self.assertIn('id', user.dict_for_save())
 
 if __name__ == "__main__":
     unittest.main()

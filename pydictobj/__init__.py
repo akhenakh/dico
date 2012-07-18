@@ -141,7 +141,7 @@ class ListField(BaseField):
         self.max_length = max_length
         self.min_length = min_length
 
-        if not isinstance(subfield, BaseField):
+        if not isinstance(subfield, (BaseField)):
             raise AttributeError('ListField only accepts BaseField subclass')
 
         super(ListField, self).__init__(**kwargs)
@@ -159,6 +159,21 @@ class ListField(BaseField):
             if not self.subfield._validate(entry):
                 return False
         return True
+
+
+class EmbeddedDocumentField(BaseField):
+    def __init__(self, field_type, **kwargs):
+        self.field_type = field_type
+        if not isinstance(field_type, DocumentMetaClass):
+            raise AttributeError('EmbeddedDocumentField only accepts Document subclass')
+
+        super(EmbeddedDocumentField, self).__init__(**kwargs)
+
+    def _validate(self, value):
+        if not isinstance(value, self.field_type):
+            return False
+
+        return value.validate()
 
 
 class DocumentMetaClass(type):

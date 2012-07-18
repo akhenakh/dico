@@ -33,7 +33,7 @@ Here are the usual patterns with Pydictobj:
 
 If dict_for_save is called on **not valid data** it will raise a **ValidationException**.
 
-### Create an object populate from existing data and modify it
+### Validate an object populate from existing data and modify it
 
     >>> dict_from_db = {'id': '50000685467ffd11d1000001', 'title': 'A post', 'body': "I'm a post"}
     >>> post = BlogPost(**dict_from_db)
@@ -169,6 +169,7 @@ Not the rename_field function which is provided in pydictobj as shortcut.
         email = EmailField()
 
         pre_save_filter = [partial(pydictobj.rename_field, 'id', '_id')]
+        owner_fields = ['firstname', 'id', 'email']
 	    public_fields = ['firstname', 'id']
 		
 	>>> user_dict = db.user.find_one({'email':'bob@sponge.com'}, [])
@@ -181,11 +182,14 @@ Not the rename_field function which is provided in pydictobj as shortcut.
 	
 	>>> user = User()
 	>>> user.email = 'sponge@bob.com'
+	>>> user.validate()
+	True
 	>>> db.user.save(user.dict_for_save())
 	
 	# note this trick here we are reusing the public fields list from the user object to query only
 	# this specific fields and make queries faster
-	>>> user = db.user.find_one({'email':'bob@yahoo.com', User.public_fields)
+	>>> user_dict = db.user.find_one({'email':'bob@yahoo.com', User.public_fields)
+	>>> user = User(**user_dict)
 	>>> user.dict_for_public()
 	{'id':'50000685467ffd11d1000001', 'firstname':'Bob'}
         
