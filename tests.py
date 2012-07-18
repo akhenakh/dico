@@ -160,6 +160,22 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertRaises(pydictobj.ValidationException, user.dict_for_public)
         self.assertRaises(pydictobj.ValidationException, user.dict_for_owner)
 
+        class User(pydictobj.Document):
+            name = pydictobj.StringField()
+            lastname = pydictobj.StringField()
+
+            public_fields = ['name', 'lastname']
+
+        user = User()
+        user.name = 'Bob'
+
+        self.assertIn('name', user.dict_for_public())
+        # asked for but not set
+        self.assertNotIn('firstname', user.dict_for_public())
+
+        user.lastname = 'Spong'
+        self.assertIn('lastname', user.dict_for_public())
+
     def test_modified_fields(self):
         class User(pydictobj.Document):
             name = pydictobj.StringField()

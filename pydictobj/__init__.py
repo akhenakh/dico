@@ -311,7 +311,7 @@ class Document(object):
         # find all the keys in fields_list that are fields
         # and form a dict with the value in _data
         field_dict = {good_key: self._data[good_key] for good_key in fields_list
-                       if good_key in self._fields.keys()}
+                       if good_key in self._fields.keys() and good_key in self._data}
 
         # find all the keys in public_fields that are NOT fields
         # return a dict with getattr on the obj
