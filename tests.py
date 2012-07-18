@@ -238,6 +238,9 @@ class TestAPIShareCan(unittest.TestCase):
         user = User()
         self.assertTrue(user.validate_partial())
 
+        user = User(id=44)
+        self.assertEqual(user.id, 44)
+
     def test_not_required(self):
         class User(pydictobj.Document):
             id = pydictobj.IntegerField()
