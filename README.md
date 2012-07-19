@@ -1,11 +1,11 @@
-# PyDictObj
+# Dico
 
 After using [DictShield](https://github.com/j2labs/dictshield), a "database-agnostic modeling system", I've found the idea very usefull when dealing with NoSQL database, but want to choose another direction.
-PyDictObj is an attempt to solve my needs, heavily inspired by DictShield.
+Dico is an attempt to solve my needs, heavily inspired by DictShield.
 
 Most of the time you're manipulating data from a database server, modify it and save, especially in web development.
 
-Here are the usual patterns with PyDictObj:
+Here are the usual patterns with Dico:
 
 ### Create an object from scratch and validate fields
 
@@ -77,8 +77,8 @@ When working with real data, you will not fetch **every** fields from your DB, b
 ### ListField
 A list can contains n elements of a field's type.
 
-    class User(pydictobj.Document):
-        friends = pydictobj.ListField(pydictobj.IntegerField(), min_length=2, max_length=4)
+    class User(dico.Document):
+        friends = dico.ListField(dico.IntegerField(), min_length=2, max_length=4)
 
 ### Field types
 
@@ -150,8 +150,8 @@ You can use partial to call function with arguments
 
     from functools import partial
 
-    class User(pydictobj.Document):
-        id = pydictobj.IntegerField()
+    class User(dico.Document):
+        id = dico.IntegerField()
         def rename_field(old_field, new_field, filter_dict):
         	if old_field in filter_dict:
         	    filter_dict[new_field] = filter_dict[old_field]
@@ -181,14 +181,14 @@ Properties are suitable for serialization
 ### Embedded fields
 You may embed document in document, directly or within a list
 
-    class OAuthToken(pydictobj.Document):
-        consumer_secret = pydictobj.StringField(required=True, max_length=32)
-        active = pydictobj.BooleanField(default=True)
-        token_id = pydictobj.mongo.ObjectIdField(required=True, default=ObjectId)
+    class OAuthToken(dico.Document):
+        consumer_secret = dico.StringField(required=True, max_length=32)
+        active = dico.BooleanField(default=True)
+        token_id = dico.mongo.ObjectIdField(required=True, default=ObjectId)
 
-    class User(pydictobj.Document):
-        id = pydictobj.IntegerField()
-        token = pydictobj.EmbeddedDocumentField(OAuthToken)
+    class User(dico.Document):
+        id = dico.IntegerField()
+        token = dico.EmbeddedDocumentField(OAuthToken)
 
     >>> user = User()
     >>> user.token = 3
@@ -202,14 +202,14 @@ You may embed document in document, directly or within a list
     >>> user.validate()
     False
 
-    class OAuthToken(pydictobj.Document):
-        consumer_secret = pydictobj.StringField(required=True, max_length=32)
-        active = pydictobj.BooleanField(default=True)
-        token_id = pydictobj.mongo.ObjectIdField(required=True, default=ObjectId)
+    class OAuthToken(dico.Document):
+        consumer_secret = dico.StringField(required=True, max_length=32)
+        active = dico.BooleanField(default=True)
+        token_id = dico.mongo.ObjectIdField(required=True, default=ObjectId)
 
-    class User(pydictobj.Document):
-        id = pydictobj.IntegerField()
-        tokens = pydictobj.ListField(pydictobj.EmbeddedDocumentField(OAuthToken))
+    class User(dico.Document):
+        id = dico.IntegerField()
+        tokens = dico.ListField(dico.EmbeddedDocumentField(OAuthToken))
 
     >>> user = User()
     >>> user.id = 2
@@ -222,14 +222,14 @@ You may embed document in document, directly or within a list
     
 ### Example usage with mongo
 We know we want to update only some fields firstname and email, so we fetch the object with no field, update our fields then update, later we create a new user and save it.
-Not the rename_field function which is provided in PyDictObj as shortcut.
+Not the rename_field function which is provided in Dico as shortcut.
 
     class User(Document):
 		id = ObjectIdField(default=ObjectId(), required=True, aliases=['_id'])
 		firstname = StringField(required=True, max_length=40)
         email = EmailField()
 
-        pre_save_filter = [partial(pydictobj.rename_field, 'id', '_id')]
+        pre_save_filter = [partial(dico.rename_field, 'id', '_id')]
         owner_fields = ['firstname', 'id', 'email']
 	    public_fields = ['firstname', 'id']
 		
@@ -272,7 +272,7 @@ Not the rename_field function which is provided in PyDictObj as shortcut.
 * Convert all fields to json acceptable type, (for use with ujson directly), a param in dict\_for\_public(json_convert=True) ?
 * Use it as form validation? (I'm not sure I need this: my REST views are not exactly mapped to my objects)
 * Can external user modify this field? Eg id
-* Returns a representation of this PyDictObj class as a JSON schema. (nizox)
+* Returns a representation of this Dico class as a JSON schema. (nizox)
 * Post save commit() reset modified fields
 
 ## TODO
@@ -295,9 +295,9 @@ Not the rename_field function which is provided in PyDictObj as shortcut.
 
 ## Installing
 
-PyDictObj is available via [pypi](http://pypi.python.org).
+Dico is available via [pypi](http://pypi.python.org).
 
-    pip install pydictobj
+    pip install dico
 
 
 ## Contributors
@@ -308,4 +308,27 @@ PyDictObj is available via [pypi](http://pypi.python.org).
 
 ## License
 
-BSD
+    * Copyright (c) 1998, Regents of the University of California
+    * All rights reserved.
+    * Redistribution and use in source and binary forms, with or without
+    * modification, are permitted provided that the following conditions are met:
+    *
+    *     * Redistributions of source code must retain the above copyright
+    *       notice, this list of conditions and the following disclaimer.
+    *     * Redistributions in binary form must reproduce the above copyright
+    *       notice, this list of conditions and the following disclaimer in the
+    *       documentation and/or other materials provided with the distribution.
+    *     * Neither the name of the University of California, Berkeley nor the
+    *       names of its contributors may be used to endorse or promote products
+    *       derived from this software without specific prior written permission.
+    *
+    * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND ANY
+    * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+    * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+    * DISCLAIMED. IN NO EVENT SHALL THE REGENTS AND CONTRIBUTORS BE LIABLE FOR ANY
+    * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+    * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+    * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+    * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+    * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.

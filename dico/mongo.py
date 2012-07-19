@@ -5,7 +5,8 @@ except ImportError:
         'Using the ObjectIdField requires Pymongo. '
     )
 
-from . import BaseField
+from . import BaseField, Document, rename_field
+from functools import partial
 
 
 class ObjectIdField(BaseField):
@@ -13,3 +14,4 @@ class ObjectIdField(BaseField):
         if not isinstance(value, (bson.objectid.ObjectId)):
             return False
         return True
+

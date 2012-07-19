@@ -1,8 +1,8 @@
-import pydictobj
+import dico
 import unittest
 import re
 import datetime
-import pydictobj.mongo
+import dico.mongo
 from bson.objectid import ObjectId
 import random
 from functools import partial
@@ -12,9 +12,9 @@ class TestAPIShareCan(unittest.TestCase):
         pass
 
     def test_partial(self):
-        class User(pydictobj.Document):
-            id = pydictobj.IntegerField(required=True)
-            count = pydictobj.IntegerField()
+        class User(dico.Document):
+            id = dico.IntegerField(required=True)
+            count = dico.IntegerField()
 
         user = User()
         user.count = 2
@@ -27,8 +27,8 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertFalse(user.validate_partial())
 
     def test_integer_field(self):
-        class User(pydictobj.Document):
-            id = pydictobj.IntegerField(required=True)
+        class User(dico.Document):
+            id = dico.IntegerField(required=True)
 
         user = User()
         self.assertFalse(user.validate())
@@ -40,8 +40,8 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertFalse(user.validate())
 
     def test_boolean_field(self):
-        class User(pydictobj.Document):
-            active = pydictobj.BooleanField()
+        class User(dico.Document):
+            active = dico.BooleanField()
 
         user = User()
         user.active = True
@@ -50,15 +50,15 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertFalse(user.validate())
 
     def test_default_value(self):
-        class User(pydictobj.Document):
-            count = pydictobj.IntegerField(default=1)
+        class User(dico.Document):
+            count = dico.IntegerField(default=1)
 
         user = User()
         self.assertEqual(user.count, 1)
 
     def test_string_field(self):
-        class User(pydictobj.Document):
-            name = pydictobj.StringField(min_length=3, max_length=8)
+        class User(dico.Document):
+            name = dico.StringField(min_length=3, max_length=8)
 
         user = User()
         user.name = 4
@@ -74,8 +74,8 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertFalse(user.validate())
 
         test_regexp = re.compile(r"^ok")
-        class RegUser(pydictobj.Document):
-            code = pydictobj.StringField(compiled_regex=test_regexp)
+        class RegUser(dico.Document):
+            code = dico.StringField(compiled_regex=test_regexp)
 
         user = RegUser()
         user.code = 'nok'
@@ -85,8 +85,8 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertTrue(user.validate())
 
     def test_create_from_dict(self):
-        class User(pydictobj.Document):
-            name = pydictobj.StringField()
+        class User(dico.Document):
+            name = dico.StringField()
 
         test_dict = {'bad_name':'toto', 'name':'Bob'}
         user = User(**test_dict)
@@ -96,9 +96,9 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertIsNone(getattr(user, 'bad_name', None))
 
     def test_dict_for_save(self):
-        class User(pydictobj.Document):
-            name = pydictobj.StringField()
-            count = pydictobj.IntegerField()
+        class User(dico.Document):
+            name = dico.StringField()
+            count = dico.IntegerField()
 
         user = User()
         user.name = 'Bob'
@@ -119,7 +119,7 @@ class TestAPIShareCan(unittest.TestCase):
         user = User()
         user.name = 5
 
-        self.assertRaises(pydictobj.ValidationException, user.dict_for_save)
+        self.assertRaises(dico.ValidationException, user.dict_for_save)
 
         user = User()
         user.name = 'Bob'
@@ -127,8 +127,8 @@ class TestAPIShareCan(unittest.TestCase):
         user.dict_for_save()
 
     def test_dict_visibility(self):
-        class User(pydictobj.Document):
-            name = pydictobj.StringField()
+        class User(dico.Document):
+            name = dico.StringField()
 
         user = User()
         user.name = 'Bob'
@@ -138,9 +138,9 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertDictEqual({}, public_dict)
         self.assertDictEqual({}, owner_dict)
 
-        class User(pydictobj.Document):
-            name = pydictobj.StringField()
-            id = pydictobj.IntegerField()
+        class User(dico.Document):
+            name = dico.StringField()
+            id = dico.IntegerField()
             public_fields = ['name']
             owner_fields = ['name', 'id']
 
@@ -157,12 +157,12 @@ class TestAPIShareCan(unittest.TestCase):
 
         user = User()
         user.name = 4
-        self.assertRaises(pydictobj.ValidationException, user.dict_for_public)
-        self.assertRaises(pydictobj.ValidationException, user.dict_for_owner)
+        self.assertRaises(dico.ValidationException, user.dict_for_public)
+        self.assertRaises(dico.ValidationException, user.dict_for_owner)
 
-        class User(pydictobj.Document):
-            name = pydictobj.StringField()
-            lastname = pydictobj.StringField()
+        class User(dico.Document):
+            name = dico.StringField()
+            lastname = dico.StringField()
 
             public_fields = ['name', 'lastname']
 
@@ -177,9 +177,9 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertIn('lastname', user.dict_for_public())
 
     def test_modified_fields(self):
-        class User(pydictobj.Document):
-            name = pydictobj.StringField()
-            id = pydictobj.IntegerField()
+        class User(dico.Document):
+            name = dico.StringField()
+            id = dico.IntegerField()
 
         user = User()
         self.assertEqual(user.modified_fields(), set())
@@ -193,8 +193,8 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertEqual(len(modified_dict.keys()), 1)
 
     def test_choices(self):
-        class User(pydictobj.Document):
-            id = pydictobj.IntegerField(choices=[2,3])
+        class User(dico.Document):
+            id = dico.IntegerField(choices=[2,3])
 
         user = User()
         user.id = 5
@@ -203,30 +203,30 @@ class TestAPIShareCan(unittest.TestCase):
         user.id = 3
         self.assertTrue(user.validate())
 
-        class BadUser(pydictobj.Document):
-            id = pydictobj.IntegerField(choices=['toto',3])
+        class BadUser(dico.Document):
+            id = dico.IntegerField(choices=['toto',3])
         user = BadUser()
         user.id = 'toto'
         self.assertFalse(user.validate())
 
     def test_return_field(self):
-        class User(pydictobj.Document):
-            id = pydictobj.IntegerField()
+        class User(dico.Document):
+            id = dico.IntegerField()
 
-        self.assertTrue( isinstance(User.id, pydictobj.IntegerField))
+        self.assertTrue( isinstance(User.id, dico.IntegerField))
 
     def test_callable_default(self):
         def answer():
             return 42
-        class User(pydictobj.Document):
-            id = pydictobj.IntegerField(required=True, default=answer)
+        class User(dico.Document):
+            id = dico.IntegerField(required=True, default=answer)
 
         user = User()
         save_dict = user.dict_for_save()
         self.assertEqual(save_dict['id'], 42)
 
-        class User(pydictobj.Document):
-            id = pydictobj.IntegerField(default=answer)
+        class User(dico.Document):
+            id = dico.IntegerField(default=answer)
 
         user = User()
         save_dict = user.dict_for_save()
@@ -242,17 +242,17 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertEqual(user.id, 44)
 
     def test_not_required(self):
-        class User(pydictobj.Document):
-            id = pydictobj.IntegerField()
-            count = pydictobj.IntegerField(required=True)
+        class User(dico.Document):
+            id = dico.IntegerField()
+            count = dico.IntegerField(required=True)
 
         user = User()
         user.count = 2
         self.assertTrue(user.validate())
 
     def test_properties(self):
-        class User(pydictobj.Document):
-            id = pydictobj.IntegerField()
+        class User(dico.Document):
+            id = dico.IntegerField()
 
             @property
             def age(self):
@@ -267,8 +267,8 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertIn('age', public_dict)
         self.assertEqual(public_dict['age'], 42)
 
-        class User(pydictobj.Document):
-            id = pydictobj.IntegerField()
+        class User(dico.Document):
+            id = dico.IntegerField()
 
             public_fields = ['age']
 
@@ -276,8 +276,8 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertRaises(KeyError, user.dict_for_public)
 
     def test_datetime_field(self):
-        class User(pydictobj.Document):
-            creation_date = pydictobj.DateTimeField(default=datetime.datetime.utcnow)
+        class User(dico.Document):
+            creation_date = dico.DateTimeField(default=datetime.datetime.utcnow)
 
         user = User()
         self.assertTrue(isinstance(user.creation_date, datetime.datetime))
@@ -288,8 +288,8 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertFalse(user.validate())
 
     def test_objectid_field(self):
-        class User(pydictobj.Document):
-            id = pydictobj.mongo.ObjectIdField(default=ObjectId)
+        class User(dico.Document):
+            id = dico.mongo.ObjectIdField(default=ObjectId)
 
         user = User()
         user.id = ObjectId('500535541aebce0dfc000000')
@@ -298,16 +298,16 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertFalse(user.validate())
 
     def test_ensure_default_getter_equals(self):
-        class User(pydictobj.Document):
-            id = pydictobj.mongo.ObjectIdField(default=ObjectId)
+        class User(dico.Document):
+            id = dico.mongo.ObjectIdField(default=ObjectId)
 
         user = User()
         id = user.id
         self.assertEqual(id, user.dict_for_save()['id'])
 
     def test_url_field(self):
-        class User(pydictobj.Document):
-            blog_url = pydictobj.URLField(max_length=64)
+        class User(dico.Document):
+            blog_url = dico.URLField(max_length=64)
 
         user = User()
         user.blog_url = 'http://www.yahoo.com/truc?par=23&machin=23'
@@ -318,8 +318,8 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertFalse(user.validate())
 
     def test_email_field(self):
-        class User(pydictobj.Document):
-            email = pydictobj.EmailField(max_length=32)
+        class User(dico.Document):
+            email = dico.EmailField(max_length=32)
 
         user = User()
         user.email = 'bob@sponge.com'
@@ -332,8 +332,8 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertFalse(user.validate())
 
     def test_alias(self):
-        class User(pydictobj.Document):
-            id = pydictobj.IntegerField(aliases=['_id', 'aid'])
+        class User(dico.Document):
+            id = dico.IntegerField(aliases=['_id', 'aid'])
 
         user = User(_id=2)
         self.assertEqual(user.id, 2)
@@ -342,8 +342,8 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertEqual(user.id, 4)
 
     def test_float_field(self):
-        class User(pydictobj.Document):
-            lat = pydictobj.FloatField()
+        class User(dico.Document):
+            lat = dico.FloatField()
 
         user = User()
         user.lat = 4.5
@@ -354,8 +354,8 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertFalse(user.validate())
 
     def test_attach_method(self):
-        class User(pydictobj.Document):
-            id = pydictobj.IntegerField()
+        class User(dico.Document):
+            id = dico.IntegerField()
 
             def echo(self, value):
                 return value
@@ -366,8 +366,8 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertEqual(user.echo('hello'), 'hello')
 
     def test_ip_address(self):
-        class User(pydictobj.Document):
-            ip = pydictobj.IPAddressField()
+        class User(dico.Document):
+            ip = dico.IPAddressField()
 
         user = User()
         user.ip = '194.117.200.10'
@@ -380,8 +380,8 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertFalse(user.validate())
 
     def test_list_field(self):
-        class User(pydictobj.Document):
-            friends = pydictobj.ListField(pydictobj.IntegerField())
+        class User(dico.Document):
+            friends = dico.ListField(dico.IntegerField())
 
         user = User()
         user.friends = [1212, 34343, 422323]
@@ -396,8 +396,8 @@ class TestAPIShareCan(unittest.TestCase):
         user.friends = []
         self.assertTrue(user.validate())
 
-        class User(pydictobj.Document):
-            friends = pydictobj.ListField(pydictobj.IntegerField(), required=True)
+        class User(dico.Document):
+            friends = dico.ListField(dico.IntegerField(), required=True)
 
         user = User()
         self.assertFalse(user.validate())
@@ -405,8 +405,8 @@ class TestAPIShareCan(unittest.TestCase):
         user.friends = [1]
         self.assertTrue(user.validate())
 
-        class User(pydictobj.Document):
-            friends = pydictobj.ListField(pydictobj.IntegerField(), min_length=2, max_length=4)
+        class User(dico.Document):
+            friends = dico.ListField(dico.IntegerField(), min_length=2, max_length=4)
 
         user = User()
         user.friends = [1,2,3,4,5]
@@ -419,8 +419,8 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertTrue(user.validate())
 
     def test_pre_save(self):
-        class User(pydictobj.Document):
-            id = pydictobj.IntegerField()
+        class User(dico.Document):
+            id = dico.IntegerField()
 
             def rename_id_before_save(filter_dict):
                 if 'id' in filter_dict:
@@ -441,10 +441,10 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertIn('name', user.dict_for_save())
 
     def test_pre_save_partial(self):
-        class User(pydictobj.Document):
-            id = pydictobj.IntegerField()
+        class User(dico.Document):
+            id = dico.IntegerField()
 
-            pre_save_filter = [partial(pydictobj.rename_field, 'id', '_id')]
+            pre_save_filter = [partial(dico.rename_field, 'id', '_id')]
 
         user = User()
         user.id = 53
@@ -452,11 +452,11 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertIn('_id', user.dict_for_save())
 
     def test_mongo_example_document(self):
-        class MongoUser(pydictobj.Document):
-            id = pydictobj.mongo.ObjectIdField(aliases=['_id'], required=True, default=ObjectId)
-            name = pydictobj.StringField()
+        class MongoUser(dico.Document):
+            id = dico.mongo.ObjectIdField(aliases=['_id'], required=True, default=ObjectId)
+            name = dico.StringField()
 
-            pre_save_filter = [partial(pydictobj.rename_field, 'id', '_id')]
+            pre_save_filter = [partial(dico.rename_field, 'id', '_id')]
             public_fields = ['id', 'name']
 
         user = MongoUser()
@@ -466,8 +466,8 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertIn('_id', save_dict)
 
     def test_slots(self):
-        class User(pydictobj.Document):
-            id = pydictobj.IntegerField()
+        class User(dico.Document):
+            id = dico.IntegerField()
 
         user = User()
         error = False
@@ -478,16 +478,16 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertTrue(error)
 
     def test_inside_code(self):
-        class User(pydictobj.Document):
-            id = pydictobj.IntegerField()
+        class User(dico.Document):
+            id = dico.IntegerField()
 
         user = User()
         self.assertEqual({}, user._dict_for_fields())
 
 
-    def test_creastion_double_bug(self):
-        class TestObj(pydictobj.Document):
-            id = pydictobj.IntegerField()
+    def test_creation_double_bug(self):
+        class TestObj(dico.Document):
+            id = dico.IntegerField()
 
         test = TestObj()
         test.id = 45
@@ -496,14 +496,17 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertNotEqual(test.id, 45)
 
     def test_list_embedded(self):
-        class OAuthToken(pydictobj.Document):
-            consumer_secret = pydictobj.StringField(required=True, max_length=32)
-            active = pydictobj.BooleanField(default=True)
-            token_id = pydictobj.mongo.ObjectIdField(required=True, default=ObjectId)
+        class OAuthToken(dico.Document):
+            consumer_secret = dico.StringField(required=True, max_length=32)
+            active = dico.BooleanField(default=True)
+            token_id = dico.mongo.ObjectIdField(required=True, default=ObjectId)
 
-        class User(pydictobj.Document):
-            id = pydictobj.IntegerField()
-            tokens = pydictobj.ListField(pydictobj.EmbeddedDocumentField(OAuthToken))
+        class User(dico.Document):
+            id = dico.IntegerField()
+            tokens = dico.ListField(dico.EmbeddedDocumentField(OAuthToken))
+
+            public_fields = ['tokens']
+            owner_fields = ['tokens']
 
         user = User()
         user.id = 2
@@ -533,14 +536,20 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertEqual(len(user_dict['tokens']), 1)
         self.assertIn('consumer_secret', user_dict['tokens'][0])
 
-    def test_embedded(self):
-        class OAuthToken(pydictobj.Document):
-            consumer_secret = pydictobj.StringField(required=True, max_length=32)
-            active = pydictobj.BooleanField(default=True)
+        public_dict = user.dict_for_public()
+        self.assertIn('consumer_secret', public_dict['tokens'][0])
 
-        class User(pydictobj.Document):
-            id = pydictobj.IntegerField()
-            token = pydictobj.EmbeddedDocumentField(OAuthToken)
+        owner_dict = user.dict_for_public()
+        self.assertIn('consumer_secret', owner_dict['tokens'][0])
+
+    def test_embedded(self):
+        class OAuthToken(dico.Document):
+            consumer_secret = dico.StringField(required=True, max_length=32)
+            active = dico.BooleanField(default=True)
+
+        class User(dico.Document):
+            id = dico.IntegerField()
+            token = dico.EmbeddedDocumentField(OAuthToken)
 
             public_fields = ['token']
 
@@ -569,11 +578,11 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertIn('token', public_dict)
 
     def test_sublassing(self):
-        class BaseDocument(pydictobj.Document):
-            id = pydictobj.IntegerField()
+        class BaseDocument(dico.Document):
+            id = dico.IntegerField()
 
         class User(BaseDocument):
-            name = pydictobj.StringField()
+            name = dico.StringField()
 
         user = User()
         user.id = 4
