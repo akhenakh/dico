@@ -482,7 +482,7 @@ class TestAPIShareCan(unittest.TestCase):
             id = dico.IntegerField()
 
         user = User()
-        self.assertEqual({}, user._dict_for_fields())
+        self.assertEqual({}, user._dict_for_fields('owner'))
 
 
     def test_creation_double_bug(self):
@@ -495,11 +495,37 @@ class TestAPIShareCan(unittest.TestCase):
         test = TestObj()
         self.assertNotEqual(test.id, 45)
 
+    def test_in_place_modification_bug(self):
+        class OAuthToken(dico.Document):
+            consumer_secret = dico.StringField(required=True, max_length=32)
+            active = dico.BooleanField(default=True)
+            token_id = dico.mongo.ObjectIdField(required=True, default=ObjectId)
+
+            owner_field = ['token_id', 'consumer_secret']
+
+        class User(dico.Document):
+            id = dico.IntegerField()
+            tokens = dico.ListField(dico.EmbeddedDocumentField(OAuthToken))
+
+            #public_fields = ['tokens']
+            owner_fields = ['tokens']
+
+        token = OAuthToken()
+        token.consumer_secret = 'fac470fcd'
+
+        user = User()
+        user.tokens = [token]
+
+        user.dict_for_save()
+        self.assertIsInstance(user.tokens[0], OAuthToken)
+
     def test_list_embedded(self):
         class OAuthToken(dico.Document):
             consumer_secret = dico.StringField(required=True, max_length=32)
             active = dico.BooleanField(default=True)
             token_id = dico.mongo.ObjectIdField(required=True, default=ObjectId)
+
+            owner_fields = ['token_id', 'consumer_secret']
 
         class User(dico.Document):
             id = dico.IntegerField()
@@ -537,10 +563,12 @@ class TestAPIShareCan(unittest.TestCase):
         self.assertIn('consumer_secret', user_dict['tokens'][0])
 
         public_dict = user.dict_for_public()
-        self.assertIn('consumer_secret', public_dict['tokens'][0])
+        self.assertNotIn('consumer_secret', public_dict['tokens'][0])
 
-        owner_dict = user.dict_for_public()
+        owner_dict = user.dict_for_owner()
         self.assertIn('consumer_secret', owner_dict['tokens'][0])
+
+
 
     def test_embedded(self):
         class OAuthToken(dico.Document):

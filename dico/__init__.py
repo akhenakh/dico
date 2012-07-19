@@ -310,42 +310,73 @@ class Document(object):
 
         return to_filter
 
-    def _call_for_save_on_child(self, json_compliant=False):
-        """ this will call dict_for_save() on EmbeddedDocument and return a dict
-            containing self._data with key replace by the result
+    def _call_for_visibility_on_child(self, data_dict, fields_list, visibility, json_compliant=False):
+        """ this will call dict_for_%s() visibility on EmbeddedDocument and ListField and return a dict
+            containing data_dict with key replaced by the result (in place)
         """
-        data = self._data.copy()
-        for field in self._fields:
+        for field in fields_list:
             if isinstance(self._fields[field], EmbeddedDocumentField):
-                if field in self._data and self._data[field] is not None:
-                    data[field] = self._data[field].dict_for_save(json_compliant)
+                if field in data_dict and data_dict[field] is not None:
+                    call_method = getattr(data_dict[field], 'dict_for_%s' % visibility)
+                    data_dict[field] = call_method(json_compliant)
 
             if isinstance(self._fields[field], ListField):
                 if isinstance(self._fields[field].subfield, EmbeddedDocumentField):
-                    data[field] = [doc.dict_for_save() for doc in self._data[field]]
-
-        return data
+                    current_field = []
+                    for doc in data_dict[field]:
+                        call_method = getattr(doc, 'dict_for_%s' % visibility)
+                        current_field.append(call_method(json_compliant))
+                    data_dict[field] = current_field
+        return data_dict
 
     def dict_for_save(self, json_compliant=False):
-        """ return a dict with field_name:value
+        """ return a copy dict with field_name:value
             raise ValidationError if not valid
         """
-        if self._is_valid:
-            return self._call_for_save_on_child(json_compliant)
+        # TODO: put back a cache here if validate has been called earlier
         if not self.validate():
             raise ValidationException()
-        save_dict = self._data
-        has_filter = getattr(self, 'pre_save_filter', None)
+
+        save_dict = self._data.copy()
 
         # we have to call dict_for_save() on embedded document
-        data = self._call_for_save_on_child(json_compliant)
+        save_dict = self._call_for_visibility_on_child(save_dict, self._fields, 'save', json_compliant)
 
-        return data if has_filter is None else \
+        has_filter = getattr(self, 'pre_save_filter', None)
+
+        return save_dict if has_filter is None else \
             self._apply_filters(self.pre_save_filter, save_dict)
 
-    def _dict_for_fields(self, fields_list=None, json_compliant=False):
-        """ return a dict with keys specified in fields with in _data or self.property
+    def dict_for_public(self, json_compliant=False):
+        """ return a copy dict with keys specified in public_fields
+            with value from _data or self.property
             or return empty dict
+            raise ValidationError if not valid
+        """
+        public_fields = getattr(self, 'public_fields', [])
+        public_dict = self._dict_for_fields('public', public_fields, json_compliant)
+        has_filter = getattr(self, 'pre_public_filter', None)
+        return public_dict if has_filter is None else\
+            self._apply_filters(self.pre_public_filter, public_dict)
+
+    def dict_for_owner(self, json_compliant=False):
+        """ return a copy dict with keys specified in owner_fields
+            with value from _data or self.property
+            or return empty dict
+            raise ValidationError if not valid
+        """
+        owner_fields = getattr(self, 'owner_fields', [])
+        owner_dict = self._dict_for_fields('owner', owner_fields, json_compliant)
+        has_filter = getattr(self, 'pre_owner_filter', None)
+        return owner_dict if has_filter is None else\
+            self._apply_filters(self.pre_owner_filter, owner_dict)
+
+    def _dict_for_fields(self, visibility, fields_list=None, json_compliant=False):
+        """ return a dict with keys specified in fields_list from _data
+            or self.property
+            or return empty dict
+            call embedded fields if needed
+            raise ValidationError if not valid
         """
         if fields_list is None:
             return {}
@@ -353,10 +384,16 @@ class Document(object):
             if not self._validate_fields(fields_list, stop_on_required=True):
                 raise ValidationException()
 
+        save_dict = self._data.copy()
+
         # find all the keys in fields_list that are fields
         # and form a dict with the value in _data
-        field_dict = {good_key: self._data[good_key] for good_key in fields_list
-                       if good_key in self._fields.keys() and good_key in self._data}
+        field_dict = {good_key: save_dict[good_key] for good_key in fields_list
+                       if good_key in self._fields.keys() and good_key in save_dict}
+
+        # call sub dict_for_method
+        subok_dict = self._call_for_visibility_on_child(field_dict, field_dict.keys(),
+            visibility=visibility, json_compliant=json_compliant)
 
         # find all the keys in public_fields that are NOT fields
         # return a dict with getattr on the obj
@@ -364,27 +401,9 @@ class Document(object):
                           for key_not_real_field in fields_list
                           if key_not_real_field not in self._fields.keys()}
 
-        return dict(field_dict.items() + property_dict.items())
+        return dict(subok_dict.items() + property_dict.items())
 
-    def dict_for_public(self, json_compliant=False):
-        """ return a dict with keys specified in public_fields
-            with value from _data or self.property
-            or return empty dict
-        """
-        public_fields = getattr(self, 'public_fields', [])
-        public_dict = self._dict_for_fields(public_fields)
-        has_filter = getattr(self, 'pre_public_filter', None)
-        return public_dict if has_filter is None else\
-            self._apply_filters(self.pre_public_filter, public_dict)
 
-    def dict_for_owner(self, json_compliant=False):
-        """ return a dict with keys specified in owner_fields or return empty dict
-        """
-        owner_fields = getattr(self, 'owner_fields', [])
-        owner_dict = self._dict_for_fields(owner_fields)
-        has_filter = getattr(self, 'pre_owner_filter', None)
-        return owner_dict if has_filter is None else\
-            self._apply_filters(self.pre_owner_filter, owner_dict)
 
     def modified_fields(self):
         """ return a set of fields modified via setters
