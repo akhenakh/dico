@@ -203,7 +203,7 @@ class DocumentMetaClass(type):
                         aliases[alias] = attr_name
 
         slots = fields.keys() + ['_data', '_modified_fields', '_is_valid',
-            'public_fields', 'owner_fields', 'pre_save_filter', 'pre_public_filter'
+            'public_fields', 'owner_fields', 'pre_save_filter', 'pre_public_filter',
             'pre_owner_filter', '_fields']
 
         attrs['__slots__'] = tuple(slots)
