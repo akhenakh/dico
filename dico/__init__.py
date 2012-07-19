@@ -314,7 +314,7 @@ class Document(object):
         """ this will call dict_for_save() on EmbeddedDocument and return a dict
             containing self._data with key replace by the result
         """
-        data = self._data
+        data = self._data.copy()
         for field in self._fields:
             if isinstance(self._fields[field], EmbeddedDocumentField):
                 if field in self._data and self._data[field] is not None:
