@@ -53,8 +53,16 @@ class TestAPIShareCan(unittest.TestCase):
         class User(dico.Document):
             count = dico.IntegerField(default=1)
 
+            public_fields = ['count']
+
         user = User()
+        user_dict = user.dict_for_save()
+        self.assertIn('count', user_dict)
         self.assertEqual(user.count, 1)
+
+        user = User()
+        public_dict = user.dict_for_public()
+        self.assertIn('count', public_dict)
 
     def test_string_field(self):
         class User(dico.Document):
@@ -450,6 +458,7 @@ class TestAPIShareCan(unittest.TestCase):
         user.id = 53
 
         self.assertIn('_id', user.dict_for_save())
+        self.assertEqual(53, user.dict_for_save()['_id'])
 
     def test_mongo_example_document(self):
         class MongoUser(dico.Document):

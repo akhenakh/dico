@@ -419,6 +419,6 @@ class Document(object):
 # Filters
 def rename_field(old_name, new_name, dict_to_filter):
     if old_name in dict_to_filter:
-        dict_to_filter[new_name] = old_name
+        dict_to_filter[new_name] = dict_to_filter[old_name]
         del dict_to_filter[old_name]
     return dict_to_filter
