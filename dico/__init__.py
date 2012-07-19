@@ -226,12 +226,58 @@ class Document(object):
         #self._aliases_dict
 
         for key in values.keys():
-            if key in self._fields:
-                self._data[key] = values[key]
+            value = values[key]
+
+            # get the real key in case of aliases
+            real_key = self._get_real_field(key)
+            if real_key is None:
                 continue
-            if key in self._aliases_dict:
-                real_key = self._aliases_dict[key]
-                self._data[real_key] = values[key]
+
+            # special case for embedded document we want to cascade create object
+            if isinstance(self._fields[real_key], EmbeddedDocumentField):
+                field_type = self._fields[real_key].field_type
+                if isinstance(values[key], dict):
+                    intanciate_obj = field_type(**values[key])
+                    self._data[real_key] = intanciate_obj
+                    continue
+                # if it's already a native obj set it directly
+                elif isinstance(values[key], field_type):
+                    self._data[real_key] = values[key]
+                    continue
+
+            # same for listfield we will cascade create if this is a list of embedded
+            if isinstance(self._fields[real_key], ListField):
+                if isinstance(self._fields[real_key].subfield, EmbeddedDocumentField):
+                    field_type = self._fields[real_key].subfield.field_type
+                    try:
+                        iter(values[key])
+                    except TypeError:
+                        continue
+                    obj_list = []
+                    for obj in values[key]:
+                        if isinstance(obj, dict):
+                            intanciate_obj = field_type(**obj)
+                            obj_list.append(intanciate_obj)
+                        # if it's already a native obj set it directly
+                        elif isinstance(obj, field_type):
+                            obj_list.append(obj)
+                        self._data[real_key] = obj_list
+                    continue
+
+            self._data[real_key] = values[key]
+
+    def _get_real_field(self, name):
+        """
+            return the name of the real data key
+            testing for presence in aliases_dict
+            return None otherwise
+        """
+        if name in self._fields:
+            return name
+        if name in self._aliases_dict:
+            return self._aliases_dict[name]
+
+        return None
 
     def _validate_fields(self, fields_list, stop_on_required=True):
         """ take a list of fields name and validate them

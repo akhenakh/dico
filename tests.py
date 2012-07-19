@@ -7,7 +7,7 @@ from bson.objectid import ObjectId
 import random
 from functools import partial
 
-class TestAPIShareCan(unittest.TestCase):
+class TestDico(unittest.TestCase):
     def setUp(self):
         pass
 
@@ -566,9 +566,12 @@ class TestAPIShareCan(unittest.TestCase):
         user = User()
         user.tokens = None
         user.tokens.append(token)
-        self.assertEqual(len(user.tokens), 1)
+        token2 = OAuthToken()
+        token2.consumer_secret = 'fac470fcd'
+        user.tokens.append(token2)
+        self.assertEqual(len(user.tokens), 2)
         user_dict = user.dict_for_save()
-        self.assertEqual(len(user_dict['tokens']), 1)
+        self.assertEqual(len(user_dict['tokens']), 2)
         self.assertIn('consumer_secret', user_dict['tokens'][0])
 
         public_dict = user.dict_for_public()
@@ -576,7 +579,7 @@ class TestAPIShareCan(unittest.TestCase):
 
         owner_dict = user.dict_for_owner()
         self.assertIn('consumer_secret', owner_dict['tokens'][0])
-
+        self.assertIn('consumer_secret', owner_dict['tokens'][1])
 
 
     def test_embedded(self):
@@ -627,7 +630,57 @@ class TestAPIShareCan(unittest.TestCase):
 
         self.assertTrue(user.validate())
 
+        self.assertIn('name', user.dict_for_save())
         self.assertIn('id', user.dict_for_save())
+
+    def test_cascade_creation(self):
+        class Sub(dico.Document):
+            id = dico.IntegerField()
+
+        class User(dico.Document):
+            name = dico.StringField()
+            sub = dico.EmbeddedDocumentField(Sub)
+
+        sub = Sub(id=4)
+        user = User(name='Bob', sub=sub)
+        self.assertTrue(user.validate())
+
+        dic = {'name':'Bob', 'sub':{'id':4}}
+        user = User(**dic)
+        self.assertTrue(user.validate())
+
+        dic = {'name':'Bob', 'sub':sub}
+        user = User(**dic)
+        self.assertIsInstance(user.sub, Sub)
+        self.assertTrue(user.validate())
+
+        class Sub(dico.Document):
+            id = dico.IntegerField()
+
+        class User(dico.Document):
+            name = dico.StringField()
+            sublist = dico.ListField(dico.EmbeddedDocumentField(Sub))
+
+
+        sub1 = Sub(id=1)
+        sub2 = Sub(id=2)
+        user = User(name='Bob', sublist = [sub1, sub2])
+        self.assertTrue(user.validate())
+
+        dic = {'name':'Bob', 'sublist':[{'id':1},{'id':2}]}
+        user = User(**dic)
+        self.assertTrue(user.validate())
+        self.assertEqual(len(user.sublist), 2)
+        self.assertIsInstance(user.sublist[0], Sub)
+
+
+        # maybe we should not insert a partial list here
+        # and reject everything ?
+        # this will create a one element list with sub2
+        user = User(name='Bob', sublist = [1, sub2])
+        self.assertEqual(len(user.sublist), 1)
+
+
 
 if __name__ == "__main__":
     unittest.main()

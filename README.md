@@ -219,6 +219,26 @@ You may embed document in document, directly or within a list
     >>> token2 = OAuthToken()
     >>> token2.consumer_secret = 'fac470fcd'
     >>> user.tokens = [token, token2]
+
+    # cascade recreate obj
+
+    class OAuthToken(dico.Document):
+        consumer_secret = dico.StringField()
+        id = dico.IntegerField()
+
+    class User(dico.Document):
+        id = dico.IntegerField()
+        tokens = dico.ListField(dico.EmbeddedDocumentField(OAuthToken))
+
+    >>> user_dict = {'id':1, 'tokens':[
+            {'consumer_secret':'3fbc81fa', 'id':453245},
+            {'consumer_secret':'bcd821s', 'id':98837}
+        ] }
+
+    >>> user = User(**user_dict)
+
+    >>> user.tokens
+    [<__main__.OAuthToken object at 0x109b3b390>, <__main__.OAuthToken object at 0x109b3b2c0>]
     
 ### Example usage with mongo
 We know we want to update only some fields firstname and email, so we fetch the object with no field, update our fields then update, later we create a new user and save it.
@@ -267,6 +287,7 @@ Not the rename_field function which is provided in Dico as shortcut.
 * partial = not all fields, can create an object with only some fields you want to export (to avoid select * )
 * Regexp compiled only one time
 * use \_\_slots\_\_ for memory optimization and to get on AttributeError on typo
+* cascade creation of embedded oject
 
 ## Ideas
 * Convert all fields to json acceptable type, (for use with ujson directly), a param in dict\_for\_public(json_convert=True) ?
@@ -301,6 +322,7 @@ Dico is available via [pypi](http://pypi.python.org).
 
 
 ## Change log
+* 0.2 cascade creation
 * 0.1.1 fix important bugs, usable in production
 * 0.1 initial release does not use in production
 
