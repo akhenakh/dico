@@ -191,22 +191,20 @@ class DocumentMetaClass(type):
     def __new__(cls, name, bases, attrs):
         fields = {}
         aliases = {}
-        for attr_name, attr_value in attrs.items():
-            has_class = hasattr(attr_value, "__class__")
-            if has_class and issubclass(attr_value.__class__, BaseField):
-                fields[attr_name] = attr_value
-                attr_value.field_name = attr_name
+        if "_meta" not in attrs:
+            for attr_name, attr_value in attrs.items():
+                has_class = hasattr(attr_value, "__class__")
+                if has_class and issubclass(attr_value.__class__, BaseField):
+                    fields[attr_name] = attr_value
+                    attr_value.field_name = attr_name
 
-                # test for aliases
-                if fields[attr_name].aliases is not None:
-                    for alias in fields[attr_name].aliases:
-                        aliases[alias] = attr_name
+                    # test for aliases
+                    if fields[attr_name].aliases is not None:
+                        for alias in fields[attr_name].aliases:
+                            aliases[alias] = attr_name
 
-        slots = fields.keys() + ['_data', '_modified_fields', '_is_valid',
-            'public_fields', 'owner_fields', 'pre_save_filter', 'pre_public_filter',
-            'pre_owner_filter', '_fields']
+            attrs['__slots__'] = tuple(fields.keys())
 
-        attrs['__slots__'] = tuple(slots)
         klass = type.__new__(cls, name, bases, attrs)
         klass._aliases_dict = aliases
         klass._fields = fields
@@ -214,16 +212,17 @@ class DocumentMetaClass(type):
 
 
 class Document(object):
+
     __metaclass__ = DocumentMetaClass
+    __slots__ = ('_data', '_modified_fields', '_is_valid',)
+
+    _meta = True
 
     def __init__(self, **values):
         self._modified_fields = set()
         # optimization to avoid double validate() if nothing has changed
         self._is_valid = False
         self._data = {}
-        # initialized by metaclass
-        #self._fields
-        #self._aliases_dict
 
         for key in values.keys():
             value = values[key]

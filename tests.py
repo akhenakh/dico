@@ -680,7 +680,19 @@ class TestDico(unittest.TestCase):
         user = User(name='Bob', sublist = [1, sub2])
         self.assertEqual(len(user.sublist), 1)
 
+    def test_meta_subclassing(self):
+        class DocumentWrapper(dico.Document):
+            __slots__ = "test"
+            _meta = True
 
+        class User(DocumentWrapper):
+            id = dico.IntegerField()
+
+        user = User()
+        user.id = 1
+        user.test = False
+
+        self.assertNotIn('test', user.dict_for_save())
 
 if __name__ == "__main__":
     unittest.main()
