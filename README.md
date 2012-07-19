@@ -300,6 +300,13 @@ Dico is available via [pypi](http://pypi.python.org).
     pip install dico
 
 
+## Change log
+* 0.1.1 fix important bugs, usable in production
+* 0.1 initial release does not use in production
+
+## Known bugs
+* modified fields does not return modified embedded fields
+
 ## Contributors
 
 * [Fabrice aneche](https://github.com/akhenakh)
