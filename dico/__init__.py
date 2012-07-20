@@ -248,6 +248,8 @@ class StringField(BaseField):
             return False
 
         if self.compiled_regex is not None and self.compiled_regex.match(value) is None:
+            if value == '' and not self.is_required:
+                return True
             return False
 
         return True

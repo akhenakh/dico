@@ -92,6 +92,14 @@ class TestDico(unittest.TestCase):
         user.code = 'okbaby'
         self.assertTrue(user.validate())
 
+        user.code = ''
+        self.assertTrue(user.validate())
+        class RegUser(dico.Document):
+            code = dico.StringField(compiled_regex=test_regexp, required=True)
+        user = RegUser()
+        user.code = ''
+        self.assertFalse(user.validate())
+
     def test_create_from_dict(self):
         class User(dico.Document):
             name = dico.StringField()
@@ -379,6 +387,9 @@ class TestDico(unittest.TestCase):
 
         user = User()
         user.ip = '194.117.200.10'
+        self.assertTrue(user.validate())
+        user = User()
+        user.ip = u'127.0.0.1'
         self.assertTrue(user.validate())
         user.ip = '::1'
         self.assertTrue(user.validate())
@@ -775,6 +786,14 @@ class TestDico(unittest.TestCase):
         user.test = False
 
         self.assertNotIn('test', user.dict_for_save())
+
+    def test_empty_set(self):
+        class User(dico.Document):
+            url = dico.URLField()
+
+        user = User()
+        user.url = ''
+        self.assertTrue(user.validate())
 
 if __name__ == "__main__":
     unittest.main()
