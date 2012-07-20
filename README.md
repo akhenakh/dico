@@ -320,7 +320,7 @@ Dico is available via [pypi](http://pypi.python.org).
 
 
 ## Change log
-* 0.2 cascade creation
+* 0.2 cascade creation, notify parent's document for modified fields, regexp stringfield now validate with '' (empty string)
 * 0.1.1 fix important bugs, usable in production
 * 0.1 initial release does not use in production
 
