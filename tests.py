@@ -448,6 +448,22 @@ class TestDico(unittest.TestCase):
         self.assertIn('_id', user.dict_for_save())
         self.assertIn('name', user.dict_for_save())
 
+        def rename_id_before_save(filter_dict):
+            if 'id' in filter_dict:
+                filter_dict['_id'] = filter_dict['id']
+                del filter_dict['id']
+            return filter_dict
+
+        class User(dico.Document):
+            id = dico.IntegerField()
+
+            pre_save_filter = rename_id_before_save
+
+        user = User()
+        user.id = 53
+        #TODO: allow a direct callable
+        #self.assertIn('_id', user.dict_for_save())
+
     def test_pre_save_partial(self):
         class User(dico.Document):
             id = dico.IntegerField()
@@ -581,6 +597,44 @@ class TestDico(unittest.TestCase):
         self.assertIn('consumer_secret', owner_dict['tokens'][0])
         self.assertIn('consumer_secret', owner_dict['tokens'][1])
 
+        user_dict = {'id':4, 'tokens':[{'token_id':4, 'consumer_secret':'34dbcedf'}]}
+        user = User(**user_dict)
+
+        self.assertEqual(len(user.modified_fields()), 0)
+        user.tokens = [ OAuthToken(token_id=5, consumer_secret='23fbda')]
+        self.assertIn('tokens', user.modified_fields())
+        user = User(**user_dict)
+        user.tokens[0].token_id = 6
+        self.assertIn('tokens', user.modified_fields())
+
+        bad_user_dict = {'id':4, 'tokens':[3]}
+        user = User(**bad_user_dict)
+        self.assertEqual(len(user.tokens), 0)
+
+        user = User(**user_dict)
+        user.tokens.append(token)
+        self.assertIn('tokens', user.modified_fields())
+
+        user = User(**user_dict)
+        user.tokens + [token]
+        self.assertIn('tokens', user.modified_fields())
+
+        user = User(**user_dict)
+        # not that we will add the same object should not raise modification
+        user.tokens[0] = token
+        self.assertIn('tokens', user.modified_fields())
+
+        user = User(**user_dict)
+        user.tokens.insert(0, token)
+        self.assertIn('tokens', user.modified_fields())
+        user = User(**user_dict)
+        user.tokens.pop(0)
+        self.assertIn('tokens', user.modified_fields())
+        user = User(**user_dict)
+        user.tokens.pop()
+        self.assertIn('tokens', user.modified_fields())
+
+        #TODO: needs more tests for NotifyParentList subclass
 
     def test_embedded(self):
         class OAuthToken(dico.Document):
@@ -616,6 +670,34 @@ class TestDico(unittest.TestCase):
 
         public_dict = user.dict_for_public()
         self.assertIn('token', public_dict)
+
+        # ensure modified works for embedded
+
+        class OAuthToken(dico.Document):
+            consumer_secret = dico.StringField()
+            id = dico.IntegerField()
+
+        class User(dico.Document):
+            id = dico.IntegerField()
+            token = dico.EmbeddedDocumentField(OAuthToken)
+
+        init_dict = {'id':1, 'token':{'consumer_secret':'3fbc81fa', 'id':453245}}
+        user = User( **init_dict )
+        user.token = OAuthToken(consumer_secret='sdf3223', id=3)
+        self.assertIn('token', user.modified_fields())
+
+        init_dict = {'id':1, 'token':{'consumer_secret':'3fbc81fa', 'id':453245}}
+        user = User( **init_dict )
+        user.token.id = 5
+        self.assertIn('token', user.modified_fields())
+
+        init_dict = {'user':{'id':1, 'token':{'consumer_secret':'3fbc81fa', 'id':453245}}}
+        class Group(dico.Document):
+            user = dico.EmbeddedDocumentField(User)
+
+        group = Group(**init_dict)
+        group.user.token.consumer_secret = 'toto'
+        self.assertIn('user', group.modified_fields())
 
     def test_sublassing(self):
         class BaseDocument(dico.Document):

@@ -37,13 +37,15 @@ class BaseField(object):
         self.is_required = required
         self.choices = choices
         self.aliases = aliases
-        # Set by the metaclass
-        #self.field_name
 
     def __set__(self, instance, value):
         instance._data[self.field_name] = value
         instance._modified_fields.add(self.field_name)
         instance._is_valid = False
+        # recursively notify for modified_fields
+        while instance._parent is not None:
+            instance._parent._modified_fields.add(instance._parent_field_name)
+            instance = instance._parent
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -58,6 +60,115 @@ class BaseField(object):
             if value is not None:
                 instance._data[self.field_name] = value
         return value
+
+
+class EmbeddedDocumentField(BaseField):
+    def __init__(self, field_type, **kwargs):
+        self.field_type = field_type
+
+        if not isinstance(field_type, DocumentMetaClass):
+            raise AttributeError('EmbeddedDocumentField only accepts Document subclass')
+
+        super(EmbeddedDocumentField, self).__init__(**kwargs)
+
+    def __set__(self, instance, value):
+        # we set the parent
+        if isinstance(value, Document):
+            value._parent_field_name = self.field_name
+
+        super(EmbeddedDocumentField, self).__set__(instance, value)
+
+    def _validate(self, value):
+        if not isinstance(value, self.field_type):
+            return False
+
+        return value.validate()
+
+
+class NotifyParentList(list):
+    """
+        A minimal list subclass that will notify for modification to the parent
+        for special case like parent.obj.append
+    """
+    def __init__(self, seq=(), parent=None, field_name=None):
+        self._parent = parent
+        self._field_name = field_name
+        super(NotifyParentList, self).__init__(seq)
+
+    def _tag_obj_for_parent_name(self, obj):
+        """ check if the obj is a document and set his parent_name
+        """
+        if isinstance(obj, Document):
+            obj._parent = self._parent
+            obj._parent_field_name = self._field_name
+            return
+        try:
+            iter(obj)
+        except TypeError:
+            return
+        for entry in obj:
+            if isinstance(entry, Document):
+                entry._parent = self._parent
+                entry._parent_field_name = self._field_name
+
+    def _notify_parents(self):
+        # recursively notify for modified_fields
+        self._parent._modified_fields.add(self._field_name)
+        instance = self._parent
+        # recursively notify for modified_fields
+        while instance._parent is not None:
+            instance._parent._modified_fields.add(instance._parent_field_name)
+            instance = instance._parent
+
+    def __add__(self, other):
+        self._tag_obj_for_parent_name(other)
+        self._notify_parents()
+        return super(NotifyParentList, self).__add__(other)
+
+    def __setslice__(self, i, j, seq):
+        self._tag_obj_for_parent_name(seq)
+        self._notify_parents()
+        return super(NotifyParentList, self).__setslice__(i, j, seq)
+
+    def __delslice__(self, i, j):
+        self._notify_parents()
+        return super(NotifyParentList, self).__delslice__(i, j)
+
+    def __setitem__(self, key, value):
+        self._tag_obj_for_parent_name(value)
+        self._notify_parents()
+        return super(NotifyParentList, self).__setitem__(key, value)
+
+    def __delitem__(self, key):
+        self._notify_parents()
+        return super(NotifyParentList, self).__delitem__(key)
+
+    def append(self, p_object):
+        self._tag_obj_for_parent_name(p_object)
+        self._notify_parents()
+        return super(NotifyParentList, self).append(p_object)
+
+    def remove(self, value):
+        self._notify_parents()
+        return super(NotifyParentList, self).remove(value)
+
+    def insert(self, index, p_object):
+        self._tag_obj_for_parent_name(p_object)
+        self._notify_parents()
+        return super(NotifyParentList, self).insert(index, p_object)
+
+    def extend(self, iterable):
+        self._tag_obj_for_parent_name(iterable)
+        self._notify_parents()
+        return super(NotifyParentList, self).extend(iterable)
+
+    def pop(self, index=None):
+        if index is None:
+            if super(NotifyParentList, self).pop():
+                self._notify_parents()
+        else:
+            if super(NotifyParentList, self).pop(index):
+                self._notify_parents()
 
 
 class ListField(BaseField):
@@ -85,6 +196,21 @@ class ListField(BaseField):
                 return False
         return True
 
+    def __set__(self, instance, value):
+        # we set the parent for each element
+        try:
+            iter(value)
+        except TypeError:
+            pass
+        else:
+            if not isinstance(value, NotifyParentList):
+                value = NotifyParentList(value, parent=instance, field_name=self.field_name)
+            for obj in value:
+                if isinstance(obj, Document):
+                    obj._parent_field_name = self.field_name
+
+        super(ListField, self).__set__(instance, value)
+
     def __get__(self, instance, owner):
         """ we need need to override get to provide a way for list to be init as []
             before "instantiation" as we want to obj.field.append
@@ -92,7 +218,7 @@ class ListField(BaseField):
         value = super(ListField, self).__get__(instance, owner)
 
         if value is None:
-            instance._data[self.field_name] = []
+            instance._data[self.field_name] = NotifyParentList(parent=instance, field_name=self.field_name)
             return instance._data[self.field_name]
 
         return value
@@ -172,21 +298,6 @@ class DateTimeField(BaseField):
         return True
 
 
-class EmbeddedDocumentField(BaseField):
-    def __init__(self, field_type, **kwargs):
-        self.field_type = field_type
-        if not isinstance(field_type, DocumentMetaClass):
-            raise AttributeError('EmbeddedDocumentField only accepts Document subclass')
-
-        super(EmbeddedDocumentField, self).__init__(**kwargs)
-
-    def _validate(self, value):
-        if not isinstance(value, self.field_type):
-            return False
-
-        return value.validate()
-
-
 class DocumentMetaClass(type):
     def __new__(cls, name, bases, attrs):
         fields = {}
@@ -214,15 +325,17 @@ class DocumentMetaClass(type):
 class Document(object):
 
     __metaclass__ = DocumentMetaClass
-    __slots__ = ('_data', '_modified_fields', '_is_valid',)
+    __slots__ = ('_data', '_modified_fields', '_is_valid', '_parent', '_parent_field_name')
 
     _meta = True
 
-    def __init__(self, **values):
+    def __init__(self, parent=None, parent_field_name=None, **values):
         self._modified_fields = set()
         # optimization to avoid double validate() if nothing has changed
         self._is_valid = False
         self._data = {}
+        self._parent = parent
+        self._parent_field_name = parent_field_name
 
         for key in values.keys():
             value = values[key]
@@ -236,7 +349,7 @@ class Document(object):
             if isinstance(self._fields[real_key], EmbeddedDocumentField):
                 field_type = self._fields[real_key].field_type
                 if isinstance(values[key], dict):
-                    intanciate_obj = field_type(**values[key])
+                    intanciate_obj = field_type(parent=self, parent_field_name=real_key, **values[key])
                     self._data[real_key] = intanciate_obj
                     continue
                 # if it's already a native obj set it directly
@@ -252,15 +365,16 @@ class Document(object):
                         iter(values[key])
                     except TypeError:
                         continue
+                    # we create first a normal list to avoid notification at append()
                     obj_list = []
                     for obj in values[key]:
                         if isinstance(obj, dict):
-                            intanciate_obj = field_type(**obj)
+                            intanciate_obj = field_type(parent=self, parent_field_name=real_key, **obj)
                             obj_list.append(intanciate_obj)
                         # if it's already a native obj set it directly
                         elif isinstance(obj, field_type):
                             obj_list.append(obj)
-                        self._data[real_key] = obj_list
+                        self._data[real_key] = NotifyParentList(obj_list, parent=self, field_name=real_key)
                     continue
 
             self._data[real_key] = values[key]

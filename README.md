@@ -300,11 +300,9 @@ Not the rename_field function which is provided in Dico as shortcut.
 * Implements json_compliant
 * errors explanation
 * the continue in _validate_fields does not show up in coverage
-* documentation for ValidationException on save()
 * in _apply_filters if call directly a callable not in a list arg error
 * update management for mongo ? (it will become a real ORM)
 * how to deal with filters while subclassing ?
-* release on pypi
 
 ## Differences with dictshield
 * dictshield raise ValueError while setting a property on a document if the data does not match the field, makes validate() useless
@@ -327,7 +325,6 @@ Dico is available via [pypi](http://pypi.python.org).
 * 0.1 initial release does not use in production
 
 ## Known bugs
-* modified fields does not return modified embedded fields
 
 ## Contributors
 
