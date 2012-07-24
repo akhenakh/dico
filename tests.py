@@ -196,6 +196,7 @@ class TestDico(unittest.TestCase):
         class User(dico.Document):
             name = dico.StringField()
             id = dico.IntegerField()
+            tokens = dico.ListField(dico.StringField())
 
         user = User()
         self.assertEqual(user.modified_fields(), set())
@@ -207,6 +208,9 @@ class TestDico(unittest.TestCase):
         self.assertIn('name', modified_dict)
         self.assertEqual(modified_dict['name'], 'Bob')
         self.assertEqual(len(modified_dict.keys()), 1)
+
+        user = User(tokens=["test"])
+        self.assertNotIn("tokens", user.modified_fields())
 
     def test_choices(self):
         class User(dico.Document):
@@ -225,11 +229,11 @@ class TestDico(unittest.TestCase):
         user.id = 'toto'
         self.assertFalse(user.validate())
 
-    def test_return_field(self):
+    def test_field(self):
         class User(dico.Document):
             id = dico.IntegerField()
 
-        self.assertTrue( isinstance(User.id, dico.IntegerField))
+        self.assertTrue(isinstance(User._fields["id"], dico.IntegerField))
 
     def test_callable_default(self):
         def answer():
@@ -357,6 +361,16 @@ class TestDico(unittest.TestCase):
         user = User(aid=4)
         self.assertEqual(user.id, 4)
 
+        class User(dico.Document):
+            id = dico.IntegerField(aliases=['_id', 'aid'])
+
+        error = False
+        try:
+            User(**{'id': 1, 'aid': 2 })
+        except  ValueError:
+            error = True
+        self.assertTrue(error)
+
     def test_float_field(self):
         class User(dico.Document):
             lat = dico.FloatField()
@@ -419,10 +433,9 @@ class TestDico(unittest.TestCase):
             friends = dico.ListField(dico.IntegerField(), required=True)
 
         user = User()
-        self.assertFalse(user.validate())
-
-        user.friends = [1]
+        # ListField are automatically initialized
         self.assertTrue(user.validate())
+        self.assertIn("friends", user.dict_for_save())
 
         class User(dico.Document):
             friends = dico.ListField(dico.IntegerField(), min_length=2, max_length=4)
@@ -591,7 +604,6 @@ class TestDico(unittest.TestCase):
         self.assertEqual(len(user.tokens), 1)
 
         user = User()
-        user.tokens = None
         user.tokens.append(token)
         token2 = OAuthToken()
         token2.consumer_secret = 'fac470fcd'
@@ -620,7 +632,9 @@ class TestDico(unittest.TestCase):
 
         bad_user_dict = {'id':4, 'tokens':[3]}
         user = User(**bad_user_dict)
-        self.assertEqual(len(user.tokens), 0)
+        self.assertEqual(len(user.tokens), 1)
+        # TODO: figure out how to handle bad input type
+        self.assertFalse(user.validate())
 
         user = User(**user_dict)
         user.tokens.append(token)
@@ -646,6 +660,16 @@ class TestDico(unittest.TestCase):
         self.assertIn('tokens', user.modified_fields())
 
         #TODO: needs more tests for NotifyParentList subclass
+
+
+        error = False
+        try:
+            class BadDoc(dico.Document):
+                friends = dico.ListField(int)
+        except AttributeError:
+            error = True
+
+        self.assertTrue(error)
 
     def test_embedded(self):
         class OAuthToken(dico.Document):
@@ -710,6 +734,16 @@ class TestDico(unittest.TestCase):
         group.user.token.consumer_secret = 'toto'
         self.assertIn('user', group.modified_fields())
 
+        error = False
+
+        try:
+            class Group(dico.Document):
+                user = dico.EmbeddedDocumentField(int)
+        except AttributeError:
+            error = True
+
+        self.assertTrue(error)
+
     def test_sublassing(self):
         class BaseDocument(dico.Document):
             id = dico.IntegerField()
@@ -767,11 +801,13 @@ class TestDico(unittest.TestCase):
         self.assertIsInstance(user.sublist[0], Sub)
 
 
-        # maybe we should not insert a partial list here
-        # and reject everything ?
-        # this will create a one element list with sub2
+        # maybe we should insert a partial list here
+        # or reject everything ? or accept everything ?
+        # this will create a list with 2 elements
         user = User(name='Bob', sublist = [1, sub2])
-        self.assertEqual(len(user.sublist), 1)
+        self.assertEqual(len(user.sublist), 2)
+        # but fail during validation
+        self.assertFalse(user.validate())
 
     def test_meta_subclassing(self):
         class DocumentWrapper(dico.Document):
@@ -794,6 +830,7 @@ class TestDico(unittest.TestCase):
         user = User()
         user.url = ''
         self.assertTrue(user.validate())
+
 
 if __name__ == "__main__":
     unittest.main()

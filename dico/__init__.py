@@ -38,28 +38,21 @@ class BaseField(object):
         self.choices = choices
         self.aliases = aliases
 
-    def __set__(self, instance, value):
-        instance._data[self.field_name] = value
+    def _register_document(self, document, field_name):
+        self.field_name = field_name
+        # test for aliases
+        if self.aliases is not None:
+            for alias in self.aliases:
+                document._aliases.append((alias, field_name))
+
+    def _changed(self, instance):
+        """ notify parent's document for changes """
         instance._modified_fields.add(self.field_name)
         instance._is_valid = False
-        # recursively notify for modified_fields
-        while instance._parent is not None:
-            instance._parent._modified_fields.add(instance._parent_field_name)
-            instance = instance._parent
-
-    def __get__(self, instance, owner):
-        if instance is None:
-            # Document class being used rather than a document object
-            return self
-        value = instance._data.get(self.field_name)
-
-        if value is None:
-            value = self.default
-            if callable(value):
-                value = value()
-            if value is not None:
-                instance._data[self.field_name] = value
-        return value
+        # called recursively
+        if instance._parent:
+            field = instance._parent_field
+            field._changed(instance._parent)
 
 
 class EmbeddedDocumentField(BaseField):
@@ -71,12 +64,15 @@ class EmbeddedDocumentField(BaseField):
 
         super(EmbeddedDocumentField, self).__init__(**kwargs)
 
-    def __set__(self, instance, value):
-        # we set the parent
-        if isinstance(value, Document):
-            value._parent_field_name = self.field_name
-
-        super(EmbeddedDocumentField, self).__set__(instance, value)
+    def _prepare(self, instance, value):
+        """ we instantiate the dict to an object if needed
+            and set the parent
+        """
+        if isinstance(value, dict):
+            value = self.field_type(parent=instance, parent_field=self, **value)
+        if isinstance(value, self.field_type):
+            value._parent_field = self
+        return value
 
     def _validate(self, value):
         if not isinstance(value, self.field_type):
@@ -90,9 +86,9 @@ class NotifyParentList(list):
         A minimal list subclass that will notify for modification to the parent
         for special case like parent.obj.append
     """
-    def __init__(self, seq=(), parent=None, field_name=None):
+    def __init__(self, seq=(), parent=None, field=None):
         self._parent = parent
-        self._field_name = field_name
+        self._field = field
         super(NotifyParentList, self).__init__(seq)
 
     def _tag_obj_for_parent_name(self, obj):
@@ -100,7 +96,7 @@ class NotifyParentList(list):
         """
         if isinstance(obj, Document):
             obj._parent = self._parent
-            obj._parent_field_name = self._field_name
+            obj._parent_field = self._field
             return
         try:
             iter(obj)
@@ -109,16 +105,10 @@ class NotifyParentList(list):
         for entry in obj:
             if isinstance(entry, Document):
                 entry._parent = self._parent
-                entry._parent_field_name = self._field_name
+                entry._parent_field = self._field
 
     def _notify_parents(self):
-        # recursively notify for modified_fields
-        self._parent._modified_fields.add(self._field_name)
-        instance = self._parent
-        # recursively notify for modified_fields
-        while instance._parent is not None:
-            instance._parent._modified_fields.add(instance._parent_field_name)
-            instance = instance._parent
+        self._field._changed(self._parent)
 
     def __add__(self, other):
         self._tag_obj_for_parent_name(other)
@@ -176,11 +166,17 @@ class ListField(BaseField):
         self.subfield = subfield
         self.max_length = max_length
         self.min_length = min_length
+        if "default" not in kwargs:
+            kwargs["default"] = []
 
         if not isinstance(subfield, (BaseField)):
             raise AttributeError('ListField only accepts BaseField subclass')
 
         super(ListField, self).__init__(**kwargs)
+
+    def _register_document(self, document, field_name):
+        self.subfield._register_document(document, field_name)
+        BaseField._register_document(self, document, field_name)
 
     def _validate(self, value):
         if not isinstance(value, list):
@@ -196,32 +192,26 @@ class ListField(BaseField):
                 return False
         return True
 
-    def __set__(self, instance, value):
-        # we set the parent for each element
+    def _prepare(self, instance, value):
+        """ we set the parent for each element
+            and set a NotifyParentList in place of a list
+        """
         try:
             iter(value)
         except TypeError:
             pass
         else:
+            if hasattr(self.subfield, "_prepare"):
+                obj_list = []
+                for obj in value:
+                    obj = self.subfield._prepare(instance, obj)
+                    if obj:
+                        obj_list.append(obj)
+                value = obj_list
             if not isinstance(value, NotifyParentList):
-                value = NotifyParentList(value, parent=instance, field_name=self.field_name)
-            for obj in value:
-                if isinstance(obj, Document):
-                    obj._parent_field_name = self.field_name
-
-        super(ListField, self).__set__(instance, value)
-
-    def __get__(self, instance, owner):
-        """ we need need to override get to provide a way for list to be init as []
-            before "instantiation" as we want to obj.field.append
-        """
-        value = super(ListField, self).__get__(instance, owner)
-
-        if value is None:
-            instance._data[self.field_name] = NotifyParentList(parent=instance, field_name=self.field_name)
-            return instance._data[self.field_name]
-
+                value = NotifyParentList(value, parent=instance, field=self)
         return value
+
 
 class BooleanField(BaseField):
     def _validate(self, value):
@@ -302,97 +292,88 @@ class DateTimeField(BaseField):
 
 class DocumentMetaClass(type):
     def __new__(cls, name, bases, attrs):
-        fields = {}
-        aliases = {}
-        if "_meta" not in attrs:
+        meta = attrs.get("_meta", False)
+        if not meta:
+            fields = {}
+            newattrs = {}
             for attr_name, attr_value in attrs.items():
-                has_class = hasattr(attr_value, "__class__")
-                if has_class and issubclass(attr_value.__class__, BaseField):
+                if isinstance(attr_value, BaseField):
                     fields[attr_name] = attr_value
-                    attr_value.field_name = attr_name
+                else:
+                    newattrs[attr_name] = attr_value
+            newattrs["__slots__"] = tuple(fields.keys())
+            newattrs["_fields"] = fields
+        else:
+            newattrs = attrs
+        newattrs["_meta"] = meta
 
-                    # test for aliases
-                    if fields[attr_name].aliases is not None:
-                        for alias in fields[attr_name].aliases:
-                            aliases[alias] = attr_name
+        klass = type.__new__(cls, name, bases, newattrs)
 
-            attrs['__slots__'] = tuple(fields.keys())
+        if not meta:
+            klass._aliases = []
+            for field_name, field in klass._fields.items():
+                field._register_document(klass, field_name)
 
-        klass = type.__new__(cls, name, bases, attrs)
-        klass._aliases_dict = aliases
-        klass._fields = fields
+            for base in bases:
+                if not getattr(base, "_meta", True):
+                    base_fields = base._fields.copy()
+                    base_fields.update(klass._fields)
+                    klass._fields = base_fields
+                    klass._aliases += base._aliases
         return klass
 
 
 class Document(object):
 
     __metaclass__ = DocumentMetaClass
-    __slots__ = ('_data', '_modified_fields', '_is_valid', '_parent', '_parent_field_name')
+    __slots__ = ('_modified_fields', '_is_valid', '_parent', '_parent_field')
 
     _meta = True
 
-    def __init__(self, parent=None, parent_field_name=None, **values):
+    def __init__(self, parent=None, parent_field=None, **values):
         self._modified_fields = set()
         # optimization to avoid double validate() if nothing has changed
         self._is_valid = False
-        self._data = {}
         self._parent = parent
-        self._parent_field_name = parent_field_name
+        self._parent_field = parent_field
 
-        for key in values.keys():
-            value = values[key]
+        # TODO: this check should be done during __new__
+        for alias, key in self._aliases:
+            if alias in values:
+                if key in values:
+                    raise ValueError("The field %s overrides this alias %s" %
+                        (key, alias))
+                values[key] = values[alias]
+                del values[alias]
 
-            # get the real key in case of aliases
-            real_key = self._get_real_field(key)
-            if real_key is None:
-                continue
+        for key, field in self._fields.items():
+            value = values.get(key, None)
 
-            # special case for embedded document we want to cascade create object
-            if isinstance(self._fields[real_key], EmbeddedDocumentField):
-                field_type = self._fields[real_key].field_type
-                if isinstance(values[key], dict):
-                    intanciate_obj = field_type(parent=self, parent_field_name=real_key, **values[key])
-                    self._data[real_key] = intanciate_obj
-                    continue
-                # if it's already a native obj set it directly
-                elif isinstance(values[key], field_type):
-                    self._data[real_key] = values[key]
-                    continue
+            if value is not None:
+                if hasattr(field, "_prepare"):
+                    value = field._prepare(self, value)
+                object.__setattr__(self, key, value)
 
-            # same for listfield we will cascade create if this is a list of embedded
-            if isinstance(self._fields[real_key], ListField):
-                if isinstance(self._fields[real_key].subfield, EmbeddedDocumentField):
-                    field_type = self._fields[real_key].subfield.field_type
-                    try:
-                        iter(values[key])
-                    except TypeError:
-                        continue
-                    # we create first a normal list to avoid notification at append()
-                    obj_list = []
-                    for obj in values[key]:
-                        if isinstance(obj, dict):
-                            intanciate_obj = field_type(parent=self, parent_field_name=real_key, **obj)
-                            obj_list.append(intanciate_obj)
-                        # if it's already a native obj set it directly
-                        elif isinstance(obj, field_type):
-                            obj_list.append(obj)
-                        self._data[real_key] = NotifyParentList(obj_list, parent=self, field_name=real_key)
-                    continue
+    def __getattr__(self, name):
+        field = self._fields.get(name, None)
+        if field:
+            value = field.default
+            if callable(value):
+                value = value()
+            if value is not None:
+                if hasattr(field, "_prepare"):
+                    value = field._prepare(self, value)
+                object.__setattr__(self, name, value)
+            return value
+        raise AttributeError
 
-            self._data[real_key] = values[key]
-
-    def _get_real_field(self, name):
-        """
-            return the name of the real data key
-            testing for presence in aliases_dict
-            return None otherwise
-        """
-        if name in self._fields:
-            return name
-        if name in self._aliases_dict:
-            return self._aliases_dict[name]
-
-        return None
+    def __setattr__(self, name, value):
+        field = self._fields.get(name, None)
+        if field is not None:
+            if hasattr(field, "_prepare"):
+                value = field._prepare(self, value)
+            field._changed(self)
+        return object.__setattr__(self, name, value)
 
     def _validate_fields(self, fields_list, stop_on_required=True):
         """ take a list of fields name and validate them
@@ -410,12 +391,7 @@ class Document(object):
                     raise KeyError
 
             field = self._fields[field_name]
-            value = self._data.get(field_name)
-
-            # if we have a default to call
-            if value is None and field.default is not None:
-                self._data[field_name] = getattr(self, field_name)
-                value = self._data[field_name]
+            value = getattr(self, field_name)
 
             if value is None:
                 if stop_on_required and field.is_required:
@@ -471,8 +447,10 @@ class Document(object):
 
         return to_filter
 
-    def _call_for_visibility_on_child(self, data_dict, fields_list, visibility, json_compliant=False):
-        """ this will call dict_for_%s() visibility on EmbeddedDocument and ListField and return a dict
+    def _call_for_visibility_on_child(self, data_dict, fields_list,
+                                      visibility, json_compliant=False):
+        """ this will call dict_for_%s() visibility on EmbeddedDocument
+            and ListField and return a dict
             containing data_dict with key replaced by the result (in place)
         """
         for field in fields_list:
@@ -498,10 +476,15 @@ class Document(object):
         if not self.validate():
             raise ValidationException()
 
-        save_dict = self._data.copy()
+        save_dict = {}
+        for key in self._fields.keys():
+            value = getattr(self, key)
+            if value is not None:
+                save_dict[key] = value
 
         # we have to call dict_for_save() on embedded document
-        save_dict = self._call_for_visibility_on_child(save_dict, self._fields, 'save', json_compliant)
+        save_dict = self._call_for_visibility_on_child(save_dict,
+            self._fields, 'save', json_compliant)
 
         has_filter = getattr(self, 'pre_save_filter', None)
 
@@ -545,12 +528,10 @@ class Document(object):
             if not self._validate_fields(fields_list, stop_on_required=True):
                 raise ValidationException()
 
-        save_dict = self._data.copy()
-
         # find all the keys in fields_list that are fields
         # and form a dict with the value in _data
-        field_dict = {good_key: save_dict[good_key] for good_key in fields_list
-                       if good_key in self._fields.keys() and good_key in save_dict}
+        field_dict = {good_key: getattr(self, good_key) for good_key in fields_list
+            if good_key in self._fields.keys() and getattr(self, good_key) is not None}
 
         # call sub dict_for_method
         subok_dict = self._call_for_visibility_on_child(field_dict, field_dict.keys(),
@@ -559,12 +540,10 @@ class Document(object):
         # find all the keys in public_fields that are NOT fields
         # return a dict with getattr on the obj
         property_dict =  {key_not_real_field: getattr(self, key_not_real_field)
-                          for key_not_real_field in fields_list
-                          if key_not_real_field not in self._fields.keys()}
+                            for key_not_real_field in fields_list
+                            if key_not_real_field not in self._fields.keys()}
 
         return dict(subok_dict.items() + property_dict.items())
-
-
 
     def modified_fields(self):
         """ return a set of fields modified via setters
@@ -574,7 +553,7 @@ class Document(object):
     def dict_for_modified_fields(self):
         """ return a dict of fields modified via setters as key with value
         """
-        return {good_key: self._data[good_key] for good_key in self._modified_fields}
+        return {good_key: getattr(self, good_key) for good_key in self._modified_fields}
 
 
 # Filters

@@ -14,4 +14,3 @@ class ObjectIdField(BaseField):
         if not isinstance(value, (bson.objectid.ObjectId)):
             return False
         return True
-
