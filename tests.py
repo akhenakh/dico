@@ -212,6 +212,29 @@ class TestDico(unittest.TestCase):
         user = User(tokens=["test"])
         self.assertNotIn("tokens", user.modified_fields())
 
+        class Car(dico.Document):
+            name = dico.StringField()
+            id = dico.IntegerField(required=True)
+
+        car = Car()
+
+        car.name = 'Peugeot'
+        self.assertTrue(car.validate_partial())
+        self.assertFalse(car.validate())
+
+        car = Car()
+        car.name = 3
+        error = False
+        try:
+            car.dict_for_modified_fields()
+        except dico.ValidationException:
+            error = True
+        self.assertTrue(error)
+
+        car_dict = car.dict_for_modified_fields(validate=False)
+        self.assertIn('name', car_dict)
+
+
     def test_choices(self):
         class User(dico.Document):
             id = dico.IntegerField(choices=[2,3])

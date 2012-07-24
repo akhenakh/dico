@@ -550,9 +550,14 @@ class Document(object):
         """
         return self._modified_fields
 
-    def dict_for_modified_fields(self):
+    def dict_for_modified_fields(self, validate=True):
         """ return a dict of fields modified via setters as key with value
+            will raise ValidationError if partial modified data not valid
+            you can force no validation with validate=False
         """
+        if validate and not self.validate_partial():
+            raise ValidationException()
+
         return {good_key: getattr(self, good_key) for good_key in self._modified_fields}
 
 
