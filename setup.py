@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='Dico',
-    version='0.2',
+    version='0.3',
     packages=['dico',],
     license='BSD',
     description='A \"database-agnostic modeling system\"',
