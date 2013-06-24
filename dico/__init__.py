@@ -106,6 +106,13 @@ class NotifyParentList(list):
             if isinstance(entry, Document):
                 entry._parent = self._parent
                 entry._parent_field = self._field
+        
+    def __deepcopy__(self, memo):
+        # we do not deep copy the parent nor fields
+        dup = NotifyParentList(parent=self._parent, field=self._field)
+        
+        dup = self[:]
+        return dup
 
     def _notify_parents(self):
         self._field._changed(self._parent)
@@ -485,7 +492,7 @@ class Document(object):
         # we have to call dict_for_save() on embedded document
         save_dict = self._call_for_visibility_on_child(save_dict,
             self._fields, 'save', json_compliant)
-
+        
         has_filter = getattr(self, 'pre_save_filter', None)
 
         return save_dict if has_filter is None else \
@@ -532,7 +539,6 @@ class Document(object):
         # and form a dict with the value in _data
         field_dict = {good_key: getattr(self, good_key) for good_key in fields_list
             if good_key in self._fields.keys() and getattr(self, good_key) is not None}
-
         # call sub dict_for_method
         subok_dict = self._call_for_visibility_on_child(field_dict, field_dict.keys(),
             visibility=visibility, json_compliant=json_compliant)
@@ -542,7 +548,6 @@ class Document(object):
         property_dict =  {key_not_real_field: getattr(self, key_not_real_field)
                             for key_not_real_field in fields_list
                             if key_not_real_field not in self._fields.keys()}
-
         return dict(subok_dict.items() + property_dict.items())
 
     def modified_fields(self):

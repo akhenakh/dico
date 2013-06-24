@@ -6,6 +6,7 @@ import dico.mongo
 from bson.objectid import ObjectId
 import random
 from functools import partial
+import copy
 
 class TestDico(unittest.TestCase):
     def setUp(self):
@@ -472,6 +473,18 @@ class TestDico(unittest.TestCase):
         self.assertFalse(user.validate())
         user.friends.append(3)
         self.assertTrue(user.validate())
+         
+        class User(dico.Document):
+            bidule = dico.ListField(dico.IntegerField())
+            friends = dico.ListField(dico.IntegerField())
+        # can we deep copy a dict
+        user = User()
+        user.friends.append(1)
+        out = user.dict_for_save()
+        copyok = copy.deepcopy(out)
+        self.assertTrue(len(copyok['friends']) == 1)
+        out['friends'].append(1)
+        self.assertTrue(len(copyok['friends']) == 1)
 
     def test_pre_save(self):
         class User(dico.Document):
